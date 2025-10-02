@@ -134,6 +134,182 @@ class EnhancedImageMarkerEditor {
         });
     }
 
+    // SMART LINK PROCESSING METHODS
+    processSmartLink(url, type) {
+        if (!url) return { type: 'direct', url: '' };
+        
+        // SoundCloud links
+        if (url.includes('soundcloud.com') || url.includes('on.soundcloud.com')) {
+            return this.handleSoundCloudLink(url);
+        }
+        
+        // Pexels video pages
+        if (url.includes('pexels.com/video/')) {
+            return this.handlePexelsLink(url);
+        }
+        
+        // YouTube links
+        if (url.includes('youtube.com/watch') || url.includes('youtu.be/')) {
+            return this.handleYouTubeLink(url);
+        }
+        
+        // Vimeo links
+        if (url.includes('vimeo.com/')) {
+            return this.handleVimeoLink(url);
+        }
+        
+        // Regular direct files
+        return { type: 'direct', url: url };
+    }
+
+    handleSoundCloudLink(url) {
+        // Convert to embed URL
+        const embedUrl = `https://w.soundcloud.com/player/?url=${encodeURIComponent(url)}&color=%23ff5500&auto_play=false&hide_related=false&show_comments=true&show_user=true&show_reposts=false&show_teaser=true`;
+        
+        return {
+            type: 'embed',
+            url: url,
+            embedUrl: embedUrl,
+            html: `<iframe width="100%" height="166" scrolling="no" frameborder="no" 
+                    src="${embedUrl}"></iframe>`
+        };
+    }
+
+    handlePexelsLink(url) {
+        // For Pexels, we can try to extract video ID and use their direct URL pattern
+        const videoIdMatch = url.match(/pexels\.com\/video\/(\d+)/);
+        if (videoIdMatch) {
+            const videoId = videoIdMatch[1];
+            return {
+                type: 'direct',
+                url: url,
+                fallback: `Pexels Video: ${url}`,
+                html: `<div class="smart-link-message">
+                         <p>Pexels video detected: <a href="${url}" target="_blank">View on Pexels</a></p>
+                         <p><em>For direct video playback, download the video and use a local file.</em></p>
+                       </div>`
+            };
+        }
+        return { type: 'direct', url: url };
+    }
+
+    handleYouTubeLink(url) {
+        // Extract video ID
+        let videoId = '';
+        if (url.includes('youtube.com/watch?v=')) {
+            videoId = url.split('v=')[1]?.split('&')[0];
+        } else if (url.includes('youtu.be/')) {
+            videoId = url.split('youtu.be/')[1]?.split('?')[0];
+        }
+        
+        if (videoId) {
+            const embedUrl = `https://www.youtube.com/embed/${videoId}`;
+            return {
+                type: 'embed',
+                url: url,
+                embedUrl: embedUrl,
+                html: `<iframe width="100%" height="315" src="${embedUrl}" 
+                        frameborder="0" allow="accelerometer; autoplay; clipboard-write; 
+                        encrypted-media; gyroscope; picture-in-picture" allowfullscreen>
+                       </iframe>`
+            };
+        }
+        
+        return { type: 'direct', url: url };
+    }
+
+    handleVimeoLink(url) {
+        const videoIdMatch = url.match(/vimeo\.com\/(\d+)/);
+        if (videoIdMatch) {
+            const videoId = videoIdMatch[1];
+            const embedUrl = `https://player.vimeo.com/video/${videoId}`;
+            return {
+                type: 'embed',
+                url: url,
+                embedUrl: embedUrl,
+                html: `<iframe src="${embedUrl}" width="100%" height="360" frameborder="0" 
+                        allow="autoplay; fullscreen; picture-in-picture" allowfullscreen>
+                       </iframe>`
+            };
+        }
+        return { type: 'direct', url: url };
+    }
+
+    getPlatformName(url) {
+        if (url.includes('soundcloud.com')) return 'SoundCloud';
+        if (url.includes('youtube.com') || url.includes('youtu.be')) return 'YouTube';
+        if (url.includes('vimeo.com')) return 'Vimeo';
+        if (url.includes('pexels.com')) return 'Pexels';
+        return 'External Platform';
+    }
+
+    validateAndPreviewUrl(url, type) {
+        if (!url) {
+            this.hidePreview(type);
+            return;
+        }
+
+        try {
+            new URL(url);
+            const processed = this.processSmartLink(url, type);
+            this.showPreview(processed, type);
+        } catch (e) {
+            this.showStatus('Invalid URL format', 'warning');
+            this.hidePreview(type);
+        }
+    }
+
+    showPreview(processedLink, type) {
+        if (type === 'link') {
+            const preview = document.getElementById('linkPreview');
+            if (processedLink.type === 'embed') {
+                preview.innerHTML = `
+                    <div class="smart-link-preview">
+                        <p><strong>Embedded Content:</strong> ${this.getPlatformName(processedLink.url)}</p>
+                        <div class="embed-preview">
+                            ${processedLink.html}
+                        </div>
+                        <p class="source-link"><a href="${processedLink.url}" target="_blank">View Original</a></p>
+                    </div>`;
+            } else {
+                preview.innerHTML = `Link: <a href="${processedLink.url}" target="_blank">${processedLink.url}</a>`;
+            }
+            preview.style.display = 'block';
+        } else if (type === 'media') {
+            const preview = document.getElementById('mediaPreview');
+            if (processedLink.type === 'embed') {
+                preview.innerHTML = `
+                    <div class="smart-link-preview">
+                        <p><strong>Embedded Media:</strong> ${this.getPlatformName(processedLink.url)}</p>
+                        <div class="embed-preview">
+                            ${processedLink.html}
+                        </div>
+                    </div>`;
+            } else {
+                // Handle direct media files
+                const extension = processedLink.url.split('.').pop().toLowerCase();
+                const audioExtensions = ['mp3', 'wav', 'ogg', 'm4a'];
+                const videoExtensions = ['mp4', 'webm', 'ogg', 'mov'];
+
+                if (audioExtensions.includes(extension)) {
+                    preview.innerHTML = `<audio controls src="${processedLink.url}">Your browser does not support audio.</audio>`;
+                } else if (videoExtensions.includes(extension)) {
+                    preview.innerHTML = `<video controls src="${processedLink.url}" style="max-width: 100%;">Your browser does not support video.</video>`;
+                } else if (processedLink.url) {
+                    preview.innerHTML = 'Unsupported media format or platform';
+                }
+            }
+            preview.style.display = 'block';
+        }
+    }
+
+    hidePreview(type) {
+        const preview = type === 'link' ? 
+            document.getElementById('linkPreview') : 
+            document.getElementById('mediaPreview');
+        preview.style.display = 'none';
+    }
+
     handleImageUpload(file) {
         if (!file) return;
 
@@ -323,6 +499,14 @@ class EnhancedImageMarkerEditor {
         document.getElementById('markerMediaUrl').value = marker.mediaUrl || '';
         document.getElementById('markerCustomColor').value = marker.color || this.currentMarkerColor;
 
+        // Trigger preview for existing URLs
+        if (marker.url) {
+            this.validateAndPreviewUrl(marker.url, 'link');
+        }
+        if (marker.mediaUrl) {
+            this.validateAndPreviewUrl(marker.mediaUrl, 'media');
+        }
+
         this.togglePropertyFields(marker.type);
     }
 
@@ -420,51 +604,6 @@ class EnhancedImageMarkerEditor {
 
     filterMarkers(searchTerm) {
         this.updateMarkerList();
-    }
-
-    // URL Validation and Preview
-    validateAndPreviewUrl(url, type) {
-        if (!url) {
-            this.hidePreview(type);
-            return;
-        }
-
-        try {
-            new URL(url);
-            this.showPreview(url, type);
-        } catch (e) {
-            this.showStatus('Invalid URL format', 'warning');
-            this.hidePreview(type);
-        }
-    }
-
-    showPreview(url, type) {
-        if (type === 'link') {
-            const preview = document.getElementById('linkPreview');
-            preview.innerHTML = `Link: <a href="${url}" target="_blank">${url}</a>`;
-            preview.style.display = 'block';
-        } else if (type === 'media') {
-            const preview = document.getElementById('mediaPreview');
-            const extension = url.split('.').pop().toLowerCase();
-            const audioExtensions = ['mp3', 'wav', 'ogg', 'm4a'];
-            const videoExtensions = ['mp4', 'webm', 'ogg', 'mov'];
-
-            if (audioExtensions.includes(extension)) {
-                preview.innerHTML = `<audio controls src="${url}">Your browser does not support audio.</audio>`;
-            } else if (videoExtensions.includes(extension)) {
-                preview.innerHTML = `<video controls src="${url}" style="max-width: 100%;">Your browser does not support video.</video>`;
-            } else {
-                preview.innerHTML = 'Unsupported media format';
-            }
-            preview.style.display = 'block';
-        }
-    }
-
-    hidePreview(type) {
-        const preview = type === 'link' ? 
-            document.getElementById('linkPreview') : 
-            document.getElementById('mediaPreview');
-        preview.style.display = 'none';
     }
 
     // Context Menu
@@ -686,15 +825,18 @@ class EnhancedImageMarkerEditor {
         };
     }
 
-    // Keep your existing generateStandaloneHTML method, but enhance it with new features
     generateStandaloneHTML(projectData) {
-        // Enhanced version that includes all the new visual features
-        const markersHTML = projectData.markers.map(marker => 
-            `<div class="marker ${marker.type}" 
-                 style="left: ${marker.x}%; top: ${marker.y}%; background-color: ${marker.color || this.getDefaultColor(marker.type)};"
-                 data-marker='${JSON.stringify(marker).replace(/'/g, "&apos;")}'>
-             </div>`
-        ).join('');
+        const markersHTML = projectData.markers.map(marker => {
+            const processedLink = this.processSmartLink(marker.url || marker.mediaUrl || '');
+            const embedData = processedLink.type === 'embed' ? 
+                `data-embed='${JSON.stringify(processedLink).replace(/'/g, "&apos;")}'` : '';
+            
+            return `<div class="marker ${marker.type}" 
+                     style="left: ${marker.x}%; top: ${marker.y}%; background-color: ${marker.color || this.getDefaultColor(marker.type)};"
+                     data-marker='${JSON.stringify(marker).replace(/'/g, "&apos;")}'
+                     ${embedData}>
+                   </div>`;
+        }).join('');
 
         return `<!DOCTYPE html>
 <html lang="en">
@@ -703,7 +845,6 @@ class EnhancedImageMarkerEditor {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Interactive Image with Markers</title>
     <style>
-        /* Include all the enhanced CSS styles from editor.css */
         ${this.getEnhancedStyles()}
     </style>
 </head>
@@ -734,27 +875,33 @@ class EnhancedImageMarkerEditor {
             marker.addEventListener('click', function(e) {
                 e.stopPropagation();
                 const markerData = JSON.parse(this.getAttribute('data-marker'));
-                showMarkerInfo(markerData);
+                const embedData = this.getAttribute('data-embed');
+                const embedInfo = embedData ? JSON.parse(embedData.replace(/&apos;/g, "'")) : null;
+                showMarkerInfo(markerData, embedInfo);
             });
         });
 
-        function showMarkerInfo(marker) {
+        function showMarkerInfo(marker, embedInfo) {
             document.getElementById('popupTitle').textContent = marker.title;
             document.getElementById('popupDescription').textContent = marker.description;
             
             const linkElement = document.getElementById('popupLink');
-            if (marker.type === 'link' && marker.url) {
-                linkElement.href = marker.url;
-                linkElement.style.display = 'inline-block';
-            } else {
-                linkElement.style.display = 'none';
-            }
-            
             const mediaElement = document.getElementById('popupMedia');
+            
+            linkElement.style.display = 'none';
             mediaElement.innerHTML = '';
             
-            if ((marker.type === 'audio' || marker.type === 'video') && marker.mediaUrl) {
-                if (marker.type === 'audio') {
+            if (marker.type === 'link' && marker.url) {
+                if (embedInfo && embedInfo.type === 'embed') {
+                    mediaElement.innerHTML = embedInfo.html;
+                } else {
+                    linkElement.href = marker.url;
+                    linkElement.style.display = 'inline-block';
+                }
+            } else if ((marker.type === 'audio' || marker.type === 'video') && marker.mediaUrl) {
+                if (embedInfo && embedInfo.type === 'embed') {
+                    mediaElement.innerHTML = embedInfo.html;
+                } else if (marker.type === 'audio') {
                     mediaElement.innerHTML = '<audio controls src="' + marker.mediaUrl + '">Your browser does not support audio.</audio>';
                 } else {
                     mediaElement.innerHTML = '<video controls src="' + marker.mediaUrl + '">Your browser does not support video.</video>';
@@ -891,6 +1038,46 @@ class EnhancedImageMarkerEditor {
         audio, video {
             width: 100%;
             margin-top: 15px;
+        }
+        .smart-link-preview {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 8px;
+        }
+        .smart-link-preview p {
+            margin: 5px 0;
+            font-size: 12px;
+        }
+        .embed-preview {
+            margin: 10px 0;
+            background: white;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        .embed-preview iframe {
+            border: none;
+            border-radius: 4px;
+        }
+        .source-link {
+            text-align: center;
+            margin-top: 8px;
+        }
+        .source-link a {
+            color: #007bff;
+            text-decoration: none;
+            font-size: 11px;
+        }
+        .smart-link-message {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 4px;
+            padding: 10px;
+            font-size: 12px;
+        }
+        .smart-link-message p {
+            margin: 5px 0;
         }`;
     }
 
