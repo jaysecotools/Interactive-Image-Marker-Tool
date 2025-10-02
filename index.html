@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Image Marker Tool - Editor</title>
+    <title>Image Marker Tool - Enhanced Editor</title>
     <link rel="stylesheet" href="styles/editor.css">
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>Image Marker Tool - MULTI FILE VERSION</h1>
+            <h1>Enhanced Image Marker Tool</h1>
             <div class="controls">
                 <input type="file" id="imageUpload" accept="image/*">
                 <select id="markerType">
@@ -18,40 +18,69 @@
                     <option value="audio">Audio Marker</option>
                     <option value="video">Video Marker</option>
                 </select>
+                <input type="color" id="markerColor" value="#007bff" title="Marker Color">
                 <button id="exportBtn">Export HTML</button>
+                <button id="importBtn">Import Project</button>
                 <button id="clearMarkers">Clear All Markers</button>
+                <button id="undoBtn" title="Undo">↶</button>
+                <button id="redoBtn" title="Redo">↷</button>
             </div>
             <div id="status" class="status"></div>
         </header>
 
-        <div class="editor-area">
-            <div class="image-container" id="imageContainer">
-                <div class="placeholder">Upload an image to start</div>
-                <img id="mainImage" style="display: none;">
+        <div class="main-content">
+            <div class="sidebar" id="sidebar">
+                <div class="sidebar-header">
+                    <h3>Markers</h3>
+                    <input type="text" id="searchMarkers" placeholder="Search markers...">
+                </div>
+                <div class="marker-list" id="markerList"></div>
             </div>
-        </div>
 
-        <div class="marker-properties" id="markerProperties" style="display: none;">
-            <h3>Marker Properties</h3>
-            <div class="property-group">
-                <label>Title:</label>
-                <input type="text" id="markerTitle" placeholder="Enter title">
+            <div class="editor-area">
+                <div class="image-container" id="imageContainer">
+                    <div class="placeholder">Upload an image to start</div>
+                    <img id="mainImage" style="display: none;">
+                </div>
             </div>
-            <div class="property-group">
-                <label>Description:</label>
-                <textarea id="markerDescription" placeholder="Enter description"></textarea>
+
+            <div class="properties-panel" id="markerProperties" style="display: none;">
+                <h3>Marker Properties</h3>
+                <div class="property-group">
+                    <label>Title:</label>
+                    <input type="text" id="markerTitle" placeholder="Enter title">
+                </div>
+                <div class="property-group">
+                    <label>Description:</label>
+                    <textarea id="markerDescription" placeholder="Enter description"></textarea>
+                </div>
+                <div class="property-group" id="linkUrlGroup" style="display: none;">
+                    <label>URL:</label>
+                    <input type="url" id="markerUrl" placeholder="https://example.com">
+                    <div class="url-preview" id="linkPreview" style="display: none;"></div>
+                </div>
+                <div class="property-group" id="mediaUrlGroup" style="display: none;">
+                    <label>Media URL:</label>
+                    <input type="url" id="markerMediaUrl" placeholder="URL to audio/video">
+                    <div class="media-preview" id="mediaPreview" style="display: none;"></div>
+                </div>
+                <div class="property-group">
+                    <label>Color:</label>
+                    <input type="color" id="markerCustomColor" value="#007bff">
+                </div>
+                <div class="property-actions">
+                    <button id="saveMarker" class="btn-primary">Save Marker</button>
+                    <button id="deleteMarker" class="btn-danger">Delete Marker</button>
+                </div>
             </div>
-            <div class="property-group" id="linkUrlGroup" style="display: none;">
-                <label>URL:</label>
-                <input type="url" id="markerUrl" placeholder="https://example.com">
-            </div>
-            <div class="property-group" id="mediaUrlGroup" style="display: none;">
-                <label>Media URL:</label>
-                <input type="url" id="markerMediaUrl" placeholder="URL to audio/video">
-            </div>
-            <button id="saveMarker">Save Marker</button>
-            <button id="deleteMarker">Delete Marker</button>
         </div>
+    </div>
+
+    <!-- Context Menu -->
+    <div id="contextMenu" class="context-menu">
+        <div class="context-item" data-action="edit">Edit Marker</div>
+        <div class="context-item" data-action="delete">Delete Marker</div>
+        <div class="context-item" data-action="color">Change Color</div>
     </div>
 
     <script src="editor.js"></script>
