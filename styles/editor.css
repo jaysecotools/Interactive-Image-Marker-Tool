@@ -295,6 +295,7 @@ header h1 {
 .btn-primary:hover { background: #0056b3; }
 .btn-danger:hover { background: #c82333; }
 
+/* Smart Link Preview Styles */
 .url-preview, .media-preview {
     margin-top: 8px;
     padding: 8px;
@@ -307,6 +308,54 @@ header h1 {
 .media-preview audio, .media-preview video {
     width: 100%;
     margin-top: 5px;
+}
+
+.smart-link-preview {
+    background: #f8f9fa;
+    padding: 10px;
+    border-radius: 4px;
+    margin-top: 8px;
+}
+
+.smart-link-preview p {
+    margin: 5px 0;
+    font-size: 12px;
+}
+
+.embed-preview {
+    margin: 10px 0;
+    background: white;
+    padding: 10px;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+}
+
+.embed-preview iframe {
+    border: none;
+    border-radius: 4px;
+}
+
+.source-link {
+    text-align: center;
+    margin-top: 8px;
+}
+
+.source-link a {
+    color: #007bff;
+    text-decoration: none;
+    font-size: 11px;
+}
+
+.smart-link-message {
+    background: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 4px;
+    padding: 10px;
+    font-size: 12px;
+}
+
+.smart-link-message p {
+    margin: 5px 0;
 }
 
 .status {
