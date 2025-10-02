@@ -1,52 +1,62 @@
 <!DOCTYPE html>
-<html>
-<head>
-    <title>BULLETPROOF HTML Export</title>
-    <style>
-        body { font-family: Arial; padding: 20px; }
-        button { padding: 10px; margin: 5px; }
-    </style>
-</head>
-<body>
-    <h1>Test Export - This WILL Work</h1>
-    <button onclick="exportWorkingHTML()">Export HTML File</button>
-    
-    <script>
-        function exportWorkingHTML() {
-            // 1. Create simple but valid HTML content
-            const htmlContent = `<!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Exported File</title>
-    <style>
-        body { background: lightblue; padding: 40px; font-family: Arial; }
-        h1 { color: darkblue; }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Marker Tool - Editor</title>
+    <link rel="stylesheet" href="styles/editor.css">
 </head>
 <body>
-    <h1>Success! This HTML file works!</h1>
-    <p>If you can see this, the export worked perfectly.</p>
-    <p>Generated: ${new Date().toLocaleString()}</p>
-</body>
-</html>`;
+    <div class="container">
+        <header>
+            <h1>Image Marker Tool</h1>
+            <div class="controls">
+                <input type="file" id="imageUpload" accept="image/*">
+                <select id="markerType">
+                    <option value="info">Info Marker</option>
+                    <option value="link">Link Marker</option>
+                    <option value="audio">Audio Marker</option>
+                    <option value="video">Video Marker</option>
+                </select>
+                <button id="exportBtn">Export HTML</button>
+                <button id="saveProject">Save Project</button>
+                <button id="loadProject">Load Project</button>
+            </div>
+        </header>
 
-            // 2. Convert to base64
-            const base64Content = btoa(unescape(encodeURIComponent(htmlContent)));
-            
-            // 3. Create data URL
-            const dataUrl = 'data:text/html;base64,' + base64Content;
-            
-            // 4. Create and trigger download
-            const link = document.createElement('a');
-            link.href = dataUrl;
-            link.download = 'working-export.html';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            
-            alert('File downloaded! Check your downloads folder for "working-export.html"');
-        }
-    </script>
+        <div class="editor-area">
+            <div class="image-container" id="imageContainer">
+                <div class="placeholder">Upload an image to start</div>
+                <img id="mainImage" style="display: none;">
+                <canvas id="panoramaView" style="display: none;"></canvas>
+            </div>
+        </div>
+
+        <div class="marker-properties" id="markerProperties" style="display: none;">
+            <h3>Marker Properties</h3>
+            <div class="property-group">
+                <label>Title:</label>
+                <input type="text" id="markerTitle" placeholder="Enter title">
+            </div>
+            <div class="property-group">
+                <label>Description:</label>
+                <textarea id="markerDescription" placeholder="Enter description"></textarea>
+            </div>
+            <div class="property-group" id="linkUrlGroup" style="display: none;">
+                <label>URL:</label>
+                <input type="url" id="markerUrl" placeholder="https://example.com">
+            </div>
+            <div class="property-group" id="mediaUrlGroup" style="display: none;">
+                <label>Media URL:</label>
+                <input type="url" id="markerMediaUrl" placeholder="URL to audio/video">
+            </div>
+            <button id="saveMarker">Save Marker</button>
+            <button id="deleteMarker">Delete Marker</button>
+        </div>
+    </div>
+
+    <input type="file" id="projectUpload" style="display: none;" accept=".json">
+
+    <script src="scripts/editor.js"></script>
 </body>
 </html>
