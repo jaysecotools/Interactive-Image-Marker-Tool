@@ -9,7 +9,7 @@
 <body>
     <div class="container">
         <header>
-            <h1>Image Marker Tool</h1>
+            <h1>Image Marker Tool - MULTI FILE VERSION</h1>
             <div class="controls">
                 <input type="file" id="imageUpload" accept="image/*">
                 <select id="markerType">
@@ -19,16 +19,15 @@
                     <option value="video">Video Marker</option>
                 </select>
                 <button id="exportBtn">Export HTML</button>
-                <button id="saveProject">Save Project</button>
-                <button id="loadProject">Load Project</button>
+                <button id="clearMarkers">Clear All Markers</button>
             </div>
+            <div id="status" class="status"></div>
         </header>
 
         <div class="editor-area">
             <div class="image-container" id="imageContainer">
                 <div class="placeholder">Upload an image to start</div>
                 <img id="mainImage" style="display: none;">
-                <canvas id="panoramaView" style="display: none;"></canvas>
             </div>
         </div>
 
@@ -55,8 +54,7 @@
         </div>
     </div>
 
-    <input type="file" id="projectUpload" style="display: none;" accept=".json">
-
-    <script src="scripts/editor.js"></script>
+    <script src="editor.js"></script>
+    <script src="exporter.js"></script>
 </body>
 </html>
