@@ -456,3 +456,37 @@ header h1 {
         order: 1;
     }
 }
+
+/* Add to existing styles/editor.css */
+
+/* Platform Info Message */
+.platform-info-message {
+    background: #e7f3ff;
+    border: 1px solid #b3d9ff;
+    border-radius: 6px;
+    padding: 15px;
+    text-align: center;
+}
+
+.platform-info-message p {
+    margin: 5px 0;
+    color: #0066cc;
+}
+
+.platform-info-message a {
+    color: #004499;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+/* Smart Link Preview Updates */
+.smart-link-preview .source-link {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #eee;
+}
+
+.smart-link-preview .source-link small {
+    color: #666;
+    font-style: italic;
+}
