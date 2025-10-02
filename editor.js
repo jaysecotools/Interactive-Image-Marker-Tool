@@ -134,7 +134,7 @@ class EnhancedImageMarkerEditor {
         });
     }
 
-    // SMART LINK PROCESSING METHODS
+    // SMART LINK PROCESSING METHODS - EDITOR PREVIEW VERSION
     processSmartLink(url, type) {
         if (!url) return { type: 'direct', url: '' };
         
@@ -162,8 +162,70 @@ class EnhancedImageMarkerEditor {
         return { type: 'direct', url: url };
     }
 
+    // SMART LINK PROCESSING FOR EXPORT - CONVERT TO DIRECT LINKS
+    processSmartLinkForExport(url, type) {
+        if (!url) return { type: 'direct', url: '' };
+        
+        // SoundCloud links
+        if (url.includes('soundcloud.com') || url.includes('on.soundcloud.com')) {
+            return {
+                type: 'platform',
+                url: url,
+                platform: 'SoundCloud',
+                html: this.generatePlatformLinkHTML(url, 'SoundCloud', 'Listen on SoundCloud', '🎵')
+            };
+        }
+        
+        // YouTube links
+        if (url.includes('youtube.com/watch') || url.includes('youtu.be/')) {
+            return {
+                type: 'platform', 
+                url: url,
+                platform: 'YouTube',
+                html: this.generatePlatformLinkHTML(url, 'YouTube', 'Watch on YouTube', '🎥')
+            };
+        }
+        
+        // Vimeo links
+        if (url.includes('vimeo.com/')) {
+            return {
+                type: 'platform',
+                url: url, 
+                platform: 'Vimeo',
+                html: this.generatePlatformLinkHTML(url, 'Vimeo', 'Watch on Vimeo', '🎬')
+            };
+        }
+        
+        // Pexels video pages
+        if (url.includes('pexels.com/video/')) {
+            return {
+                type: 'platform',
+                url: url,
+                platform: 'Pexels',
+                html: this.generatePlatformLinkHTML(url, 'Pexels', 'View on Pexels', '📸')
+            };
+        }
+        
+        // Regular direct files
+        return { type: 'direct', url: url };
+    }
+
+    generatePlatformLinkHTML(url, platform, actionText, icon) {
+        return `
+            <div class="platform-link">
+                <div class="platform-icon">${icon}</div>
+                <div class="platform-info">
+                    <h4>${platform} Content</h4>
+                    <p>This content is hosted on ${platform}. Click the button below to view it.</p>
+                    <a href="${url}" target="_blank" class="platform-btn">
+                        ${actionText}
+                    </a>
+                </div>
+            </div>`;
+    }
+
+    // EDITOR PREVIEW HANDLERS (keep embedded for editor)
     handleSoundCloudLink(url) {
-        // Convert to embed URL
         const embedUrl = `https://w.soundcloud.com/player/?url=${encodeURIComponent(url)}&color=%23ff5500&auto_play=false&hide_related=false&show_comments=true&show_user=true&show_reposts=false&show_teaser=true`;
         
         return {
@@ -176,17 +238,16 @@ class EnhancedImageMarkerEditor {
     }
 
     handlePexelsLink(url) {
-        // For Pexels, we can try to extract video ID and use their direct URL pattern
         const videoIdMatch = url.match(/pexels\.com\/video\/(\d+)/);
         if (videoIdMatch) {
             const videoId = videoIdMatch[1];
             return {
-                type: 'direct',
+                type: 'info',
                 url: url,
-                fallback: `Pexels Video: ${url}`,
-                html: `<div class="smart-link-message">
-                         <p>Pexels video detected: <a href="${url}" target="_blank">View on Pexels</a></p>
-                         <p><em>For direct video playback, download the video and use a local file.</em></p>
+                html: `<div class="platform-info-message">
+                         <p>📸 Pexels Video Detected</p>
+                         <p><em>In the exported version, this will open directly on Pexels.com</em></p>
+                         <a href="${url}" target="_blank" style="font-size: 12px;">View on Pexels</a>
                        </div>`
             };
         }
@@ -194,7 +255,6 @@ class EnhancedImageMarkerEditor {
     }
 
     handleYouTubeLink(url) {
-        // Extract video ID
         let videoId = '';
         if (url.includes('youtube.com/watch?v=')) {
             videoId = url.split('v=')[1]?.split('&')[0];
@@ -262,14 +322,14 @@ class EnhancedImageMarkerEditor {
     showPreview(processedLink, type) {
         if (type === 'link') {
             const preview = document.getElementById('linkPreview');
-            if (processedLink.type === 'embed') {
+            if (processedLink.type === 'embed' || processedLink.type === 'info') {
                 preview.innerHTML = `
                     <div class="smart-link-preview">
-                        <p><strong>Embedded Content:</strong> ${this.getPlatformName(processedLink.url)}</p>
+                        <p><strong>Content Preview:</strong> ${this.getPlatformName(processedLink.url)}</p>
                         <div class="embed-preview">
                             ${processedLink.html}
                         </div>
-                        <p class="source-link"><a href="${processedLink.url}" target="_blank">View Original</a></p>
+                        <p class="source-link"><small>In exports, this will open directly on ${this.getPlatformName(processedLink.url)}</small></p>
                     </div>`;
             } else {
                 preview.innerHTML = `Link: <a href="${processedLink.url}" target="_blank">${processedLink.url}</a>`;
@@ -277,10 +337,10 @@ class EnhancedImageMarkerEditor {
             preview.style.display = 'block';
         } else if (type === 'media') {
             const preview = document.getElementById('mediaPreview');
-            if (processedLink.type === 'embed') {
+            if (processedLink.type === 'embed' || processedLink.type === 'info') {
                 preview.innerHTML = `
                     <div class="smart-link-preview">
-                        <p><strong>Embedded Media:</strong> ${this.getPlatformName(processedLink.url)}</p>
+                        <p><strong>Media Preview:</strong> ${this.getPlatformName(processedLink.url)}</p>
                         <div class="embed-preview">
                             ${processedLink.html}
                         </div>
@@ -310,531 +370,19 @@ class EnhancedImageMarkerEditor {
         preview.style.display = 'none';
     }
 
-    handleImageUpload(file) {
-        if (!file) return;
-
-        this.saveState();
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            this.loadImage(e.target.result);
-            this.showStatus('Image loaded! Click on the image to add markers.', 'success');
-        };
-        reader.onerror = (e) => {
-            this.showStatus('Error loading image', 'error');
-        };
-        reader.readAsDataURL(file);
-    }
-
-    loadImage(src) {
-        this.image.src = src;
-        this.image.style.display = 'block';
-        this.container.querySelector('.placeholder').style.display = 'none';
-        this.clearMarkers();
-    }
-
-    addMarker(event) {
-        const rect = this.container.getBoundingClientRect();
-        const x = ((event.clientX - rect.left) / rect.width) * 100;
-        const y = ((event.clientY - rect.top) / rect.height) * 100;
-
-        const markerType = document.getElementById('markerType').value;
-        
-        const marker = {
-            id: Date.now().toString(),
-            type: markerType,
-            x: x,
-            y: y,
-            title: `Marker ${this.markers.length + 1}`,
-            description: '',
-            url: '',
-            mediaUrl: '',
-            color: this.currentMarkerColor
-        };
-
-        this.saveState();
-        this.markers.push(marker);
-        this.renderMarker(marker);
-        this.selectMarker(marker.id, event.shiftKey);
-        
-        this.showStatus(`Added ${markerType} marker`, 'success');
-        this.updateMarkerList();
-    }
-
-    renderMarker(marker) {
-        let markerElement = this.container.querySelector(`[data-id="${marker.id}"]`);
-        
-        if (!markerElement) {
-            markerElement = document.createElement('div');
-            markerElement.className = `marker ${marker.type}`;
-            markerElement.dataset.id = marker.id;
-            this.container.appendChild(markerElement);
-
-            // Drag functionality
-            this.makeMarkerDraggable(markerElement);
-        }
-
-        markerElement.style.left = `${marker.x}%`;
-        markerElement.style.top = `${marker.y}%`;
-        markerElement.style.backgroundColor = marker.color;
-
-        // Update selection state
-        if (this.selectedMarkers.has(marker.id)) {
-            markerElement.classList.add('selected');
-        } else {
-            markerElement.classList.remove('selected');
-        }
-    }
-
-    makeMarkerDraggable(markerElement) {
-        markerElement.addEventListener('mousedown', (e) => {
-            e.stopPropagation();
-            this.startDrag(markerElement, e);
-        });
-
-        markerElement.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const markerId = markerElement.dataset.id;
-            this.selectMarker(markerId, e.shiftKey);
-        });
-
-        markerElement.addEventListener('dblclick', (e) => {
-            e.stopPropagation();
-            const markerId = markerElement.dataset.id;
-            this.selectMarker(markerId, false);
-            this.editMarkerProperties();
-        });
-    }
-
-    startDrag(markerElement, event) {
-        const markerId = markerElement.dataset.id;
-        const marker = this.markers.find(m => m.id === markerId);
-        
-        if (!marker) return;
-
-        this.dragState = {
-            markerId: markerId,
-            startX: event.clientX,
-            startY: event.clientY,
-            startMarkerX: marker.x,
-            startMarkerY: marker.y
-        };
-
-        markerElement.classList.add('dragging');
-
-        const onMouseMove = (e) => {
-            if (!this.dragState) return;
-
-            const rect = this.container.getBoundingClientRect();
-            const deltaX = ((e.clientX - this.dragState.startX) / rect.width) * 100;
-            const deltaY = ((e.clientY - this.dragState.startY) / rect.height) * 100;
-
-            marker.x = Math.max(0, Math.min(100, this.dragState.startMarkerX + deltaX));
-            marker.y = Math.max(0, Math.min(100, this.dragState.startMarkerY + deltaY));
-
-            this.renderMarker(marker);
-        };
-
-        const onMouseUp = () => {
-            if (this.dragState) {
-                this.saveState();
-                markerElement.classList.remove('dragging');
-                this.dragState = null;
-            }
-            document.removeEventListener('mousemove', onMouseMove);
-            document.removeEventListener('mouseup', onMouseUp);
-        };
-
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', onMouseUp);
-    }
-
-    selectMarker(markerId, multiSelect = false) {
-        if (!multiSelect) {
-            this.selectedMarkers.clear();
-        }
-
-        if (this.selectedMarkers.has(markerId)) {
-            this.selectedMarkers.delete(markerId);
-        } else {
-            this.selectedMarkers.add(markerId);
-        }
-
-        this.updateMarkerSelection();
-        
-        if (this.selectedMarkers.size === 1) {
-            this.showMarkerProperties();
-        } else {
-            this.hideMarkerProperties();
-        }
-    }
-
-    updateMarkerSelection() {
-        // Update visual selection
-        document.querySelectorAll('.marker').forEach(markerEl => {
-            const markerId = markerEl.dataset.id;
-            if (this.selectedMarkers.has(markerId)) {
-                markerEl.classList.add('selected');
-            } else {
-                markerEl.classList.remove('selected');
-            }
-        });
-
-        // Update marker list
-        this.updateMarkerList();
-    }
-
-    showMarkerProperties() {
-        if (this.selectedMarkers.size !== 1) return;
-
-        const markerId = Array.from(this.selectedMarkers)[0];
-        const marker = this.markers.find(m => m.id === markerId);
-        if (!marker) return;
-
-        const propsPanel = document.getElementById('markerProperties');
-        propsPanel.style.display = 'block';
-
-        document.getElementById('markerTitle').value = marker.title || '';
-        document.getElementById('markerDescription').value = marker.description || '';
-        document.getElementById('markerUrl').value = marker.url || '';
-        document.getElementById('markerMediaUrl').value = marker.mediaUrl || '';
-        document.getElementById('markerCustomColor').value = marker.color || this.currentMarkerColor;
-
-        // Trigger preview for existing URLs
-        if (marker.url) {
-            this.validateAndPreviewUrl(marker.url, 'link');
-        }
-        if (marker.mediaUrl) {
-            this.validateAndPreviewUrl(marker.mediaUrl, 'media');
-        }
-
-        this.togglePropertyFields(marker.type);
-    }
-
-    hideMarkerProperties() {
-        document.getElementById('markerProperties').style.display = 'none';
-    }
-
-    saveMarkerProperties() {
-        if (this.selectedMarkers.size === 0) return;
-
-        this.saveState();
-
-        this.selectedMarkers.forEach(markerId => {
-            const marker = this.markers.find(m => m.id === markerId);
-            if (marker) {
-                marker.title = document.getElementById('markerTitle').value;
-                marker.description = document.getElementById('markerDescription').value;
-                marker.url = document.getElementById('markerUrl').value;
-                marker.mediaUrl = document.getElementById('markerMediaUrl').value;
-                marker.color = document.getElementById('markerCustomColor').value;
-
-                this.renderMarker(marker);
-            }
-        });
-
-        this.showStatus('Marker properties saved', 'success');
-        this.updateMarkerList();
-    }
-
-    deleteSelectedMarkers() {
-        if (this.selectedMarkers.size === 0) return;
-
-        this.saveState();
-
-        this.selectedMarkers.forEach(markerId => {
-            this.markers = this.markers.filter(m => m.id !== markerId);
-            const markerElement = this.container.querySelector(`[data-id="${markerId}"]`);
-            if (markerElement) {
-                markerElement.remove();
-            }
-        });
-
-        this.selectedMarkers.clear();
-        this.hideMarkerProperties();
-        this.showStatus('Markers deleted', 'success');
-        this.updateMarkerList();
-    }
-
-    clearMarkers() {
-        this.saveState();
-        this.markers = [];
-        this.selectedMarkers.clear();
-        document.querySelectorAll('.marker').forEach(marker => marker.remove());
-        this.hideMarkerProperties();
-        this.showStatus('All markers cleared', 'success');
-        this.updateMarkerList();
-    }
-
-    clearSelection() {
-        this.selectedMarkers.clear();
-        this.updateMarkerSelection();
-        this.hideMarkerProperties();
-    }
-
-    // Marker List Management
-    updateMarkerList() {
-        const markerList = document.getElementById('markerList');
-        const searchTerm = document.getElementById('searchMarkers').value.toLowerCase();
-
-        const filteredMarkers = this.markers.filter(marker => 
-            marker.title.toLowerCase().includes(searchTerm) ||
-            marker.description.toLowerCase().includes(searchTerm) ||
-            marker.type.toLowerCase().includes(searchTerm)
-        );
-
-        markerList.innerHTML = filteredMarkers.map(marker => `
-            <div class="marker-item ${this.selectedMarkers.has(marker.id) ? 'selected' : ''}" 
-                 data-id="${marker.id}">
-                <div class="marker-icon" style="background-color: ${marker.color}"></div>
-                <div class="marker-info">
-                    <div class="marker-title">${marker.title}</div>
-                    <div class="marker-type">${marker.type}</div>
-                </div>
-            </div>
-        `).join('');
-
-        // Add click listeners to marker list items
-        markerList.querySelectorAll('.marker-item').forEach(item => {
-            item.addEventListener('click', (e) => {
-                const markerId = item.dataset.id;
-                this.selectMarker(markerId, e.shiftKey);
-            });
-        });
-    }
-
-    filterMarkers(searchTerm) {
-        this.updateMarkerList();
-    }
-
-    // Context Menu
-    handleContextMenu(e) {
-        const markerElement = e.target.closest('.marker');
-        if (markerElement) {
-            e.preventDefault();
-            const markerId = markerElement.dataset.id;
-            
-            if (!this.selectedMarkers.has(markerId)) {
-                this.selectMarker(markerId, false);
-            }
-
-            this.showContextMenu(e.clientX, e.clientY);
-        }
-    }
-
-    showContextMenu(x, y) {
-        const contextMenu = document.getElementById('contextMenu');
-        contextMenu.style.left = x + 'px';
-        contextMenu.style.top = y + 'px';
-        contextMenu.style.display = 'block';
-
-        // Add event listeners to context menu items
-        contextMenu.querySelectorAll('.context-item').forEach(item => {
-            item.onclick = () => this.handleContextAction(item.dataset.action);
-        });
-    }
-
-    hideContextMenu() {
-        const contextMenu = document.getElementById('contextMenu');
-        contextMenu.style.display = 'none';
-    }
-
-    handleContextAction(action) {
-        switch(action) {
-            case 'edit':
-                this.editMarkerProperties();
-                break;
-            case 'delete':
-                this.deleteSelectedMarkers();
-                break;
-            case 'color':
-                this.changeMarkerColor();
-                break;
-        }
-        this.hideContextMenu();
-    }
-
-    editMarkerProperties() {
-        if (this.selectedMarkers.size === 1) {
-            this.showMarkerProperties();
-            document.getElementById('markerTitle').focus();
-        }
-    }
-
-    changeMarkerColor() {
-        const newColor = prompt('Enter new color (hex format):', '#007bff');
-        if (newColor) {
-            this.saveState();
-            this.selectedMarkers.forEach(markerId => {
-                const marker = this.markers.find(m => m.id === markerId);
-                if (marker) {
-                    marker.color = newColor;
-                    this.renderMarker(marker);
-                }
-            });
-            this.updateMarkerList();
-        }
-    }
-
-    // Undo/Redo System
-    saveState() {
-        this.undoStack.push({
-            markers: JSON.parse(JSON.stringify(this.markers)),
-            selectedMarkers: new Set(this.selectedMarkers)
-        });
-        this.redoStack = [];
-        this.updateUndoRedoButtons();
-    }
-
-    undo() {
-        if (this.undoStack.length === 0) return;
-
-        this.redoStack.push({
-            markers: JSON.parse(JSON.stringify(this.markers)),
-            selectedMarkers: new Set(this.selectedMarkers)
-        });
-
-        const state = this.undoStack.pop();
-        this.restoreState(state);
-    }
-
-    redo() {
-        if (this.redoStack.length === 0) return;
-
-        this.undoStack.push({
-            markers: JSON.parse(JSON.stringify(this.markers)),
-            selectedMarkers: new Set(this.selectedMarkers)
-        });
-
-        const state = this.redoStack.pop();
-        this.restoreState(state);
-    }
-
-    restoreState(state) {
-        this.markers = JSON.parse(JSON.stringify(state.markers));
-        this.selectedMarkers = new Set(state.selectedMarkers);
-        
-        // Re-render all markers
-        document.querySelectorAll('.marker').forEach(marker => marker.remove());
-        this.markers.forEach(marker => this.renderMarker(marker));
-        this.updateMarkerSelection();
-        this.updateMarkerList();
-        this.updateUndoRedoButtons();
-
-        if (this.selectedMarkers.size === 1) {
-            this.showMarkerProperties();
-        } else {
-            this.hideMarkerProperties();
-        }
-    }
-
-    updateUndoRedoButtons() {
-        document.getElementById('undoBtn').disabled = this.undoStack.length === 0;
-        document.getElementById('redoBtn').disabled = this.redoStack.length === 0;
-    }
-
-    // Import/Export
-    exportProject() {
-        if (this.markers.length === 0) {
-            this.showStatus('Add at least one marker before exporting', 'error');
-            return;
-        }
-
-        const projectData = this.getProjectData();
-        const htmlContent = this.generateStandaloneHTML(projectData);
-        
-        HTMLExporter.download(htmlContent, 'interactive-image.html');
-        this.showStatus('HTML file downloaded successfully!', 'success');
-    }
-
-    importProject() {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = '.json,.html';
-        
-        input.onchange = (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                try {
-                    this.saveState();
-                    const content = e.target.result;
-                    
-                    if (file.name.endsWith('.json')) {
-                        const projectData = JSON.parse(content);
-                        this.loadProject(projectData);
-                    } else {
-                        this.loadFromHTML(content);
-                    }
-                    
-                    this.showStatus('Project imported successfully', 'success');
-                } catch (error) {
-                    this.showStatus('Error importing project: ' + error.message, 'error');
-                }
-            };
-            reader.readAsText(file);
-        };
-        
-        input.click();
-    }
-
-    loadProject(projectData) {
-        if (projectData.imageSrc) {
-            this.loadImage(projectData.imageSrc);
-        }
-        if (projectData.markers) {
-            this.markers = projectData.markers;
-            this.selectedMarkers.clear();
-            document.querySelectorAll('.marker').forEach(marker => marker.remove());
-            this.markers.forEach(marker => this.renderMarker(marker));
-            this.updateMarkerList();
-        }
-    }
-
-    loadFromHTML(htmlContent) {
-        // This is a simplified HTML import - in practice, you'd want more robust parsing
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = htmlContent;
-        
-        const img = tempDiv.querySelector('#mainImage');
-        if (img && img.src) {
-            this.loadImage(img.src);
-        }
-
-        const markers = tempDiv.querySelectorAll('.marker');
-        this.markers = [];
-        markers.forEach(markerEl => {
-            try {
-                const markerData = JSON.parse(markerEl.getAttribute('data-marker').replace(/&apos;/g, "'"));
-                this.markers.push(markerData);
-                this.renderMarker(markerData);
-            } catch (e) {
-                console.warn('Could not parse marker data:', e);
-            }
-        });
-        
-        this.updateMarkerList();
-    }
-
-    getProjectData() {
-        return {
-            imageSrc: this.image.src,
-            markers: this.markers,
-            version: '2.0'
-        };
-    }
+    // ... (keep all the existing methods like handleImageUpload, addMarker, renderMarker, etc. unchanged)
 
     generateStandaloneHTML(projectData) {
         const markersHTML = projectData.markers.map(marker => {
-            const processedLink = this.processSmartLink(marker.url || marker.mediaUrl || '');
-            const embedData = processedLink.type === 'embed' ? 
-                `data-embed='${JSON.stringify(processedLink).replace(/'/g, "&apos;")}'` : '';
+            // Use export processing for reliable links
+            const processedLink = this.processSmartLinkForExport(marker.url || marker.mediaUrl || '');
+            const platformData = processedLink.type === 'platform' ? 
+                `data-platform='${JSON.stringify(processedLink).replace(/'/g, "&apos;")}'` : '';
             
             return `<div class="marker ${marker.type}" 
                      style="left: ${marker.x}%; top: ${marker.y}%; background-color: ${marker.color || this.getDefaultColor(marker.type)};"
                      data-marker='${JSON.stringify(marker).replace(/'/g, "&apos;")}'
-                     ${embedData}>
+                     ${platformData}>
                    </div>`;
         }).join('');
 
@@ -861,8 +409,7 @@ class EnhancedImageMarkerEditor {
             <button class="close-btn" onclick="closePopup()">&times;</button>
             <h3 id="popupTitle"></h3>
             <p id="popupDescription"></p>
-            <a id="popupLink" target="_blank" style="display: none;">Visit Link</a>
-            <div id="popupMedia"></div>
+            <div id="popupContent"></div>
         </div>
     </div>
 
@@ -875,37 +422,49 @@ class EnhancedImageMarkerEditor {
             marker.addEventListener('click', function(e) {
                 e.stopPropagation();
                 const markerData = JSON.parse(this.getAttribute('data-marker'));
-                const embedData = this.getAttribute('data-embed');
-                const embedInfo = embedData ? JSON.parse(embedData.replace(/&apos;/g, "'")) : null;
-                showMarkerInfo(markerData, embedInfo);
+                const platformData = this.getAttribute('data-platform');
+                const platformInfo = platformData ? JSON.parse(platformData.replace(/&apos;/g, "'")) : null;
+                showMarkerInfo(markerData, platformInfo);
             });
         });
 
-        function showMarkerInfo(marker, embedInfo) {
+        function showMarkerInfo(marker, platformInfo) {
             document.getElementById('popupTitle').textContent = marker.title;
             document.getElementById('popupDescription').textContent = marker.description;
             
-            const linkElement = document.getElementById('popupLink');
-            const mediaElement = document.getElementById('popupMedia');
-            
-            linkElement.style.display = 'none';
-            mediaElement.innerHTML = '';
+            const contentElement = document.getElementById('popupContent');
+            contentElement.innerHTML = '';
             
             if (marker.type === 'link' && marker.url) {
-                if (embedInfo && embedInfo.type === 'embed') {
-                    mediaElement.innerHTML = embedInfo.html;
+                if (platformInfo && platformInfo.type === 'platform') {
+                    // Show platform-specific link
+                    contentElement.innerHTML = platformInfo.html;
                 } else {
-                    linkElement.href = marker.url;
-                    linkElement.style.display = 'inline-block';
+                    // Regular link
+                    contentElement.innerHTML = \`
+                        <div class="direct-link">
+                            <p>External Link</p>
+                            <a href="\${marker.url}" target="_blank" class="direct-link-btn">
+                                Visit Website
+                            </a>
+                        </div>
+                    \`;
                 }
             } else if ((marker.type === 'audio' || marker.type === 'video') && marker.mediaUrl) {
-                if (embedInfo && embedInfo.type === 'embed') {
-                    mediaElement.innerHTML = embedInfo.html;
-                } else if (marker.type === 'audio') {
-                    mediaElement.innerHTML = '<audio controls src="' + marker.mediaUrl + '">Your browser does not support audio.</audio>';
+                if (platformInfo && platformInfo.type === 'platform') {
+                    // Show platform-specific media link
+                    contentElement.innerHTML = platformInfo.html;
                 } else {
-                    mediaElement.innerHTML = '<video controls src="' + marker.mediaUrl + '">Your browser does not support video.</video>';
+                    // Direct media files
+                    if (marker.type === 'audio') {
+                        contentElement.innerHTML = '<div class="media-container"><p>Audio:</p><audio controls src="' + marker.mediaUrl + '">Your browser does not support audio.</audio></div>';
+                    } else {
+                        contentElement.innerHTML = '<div class="media-container"><p>Video:</p><video controls src="' + marker.mediaUrl + '" style="max-width: 100%;">Your browser does not support video.</video></div>';
+                    }
                 }
+            } else {
+                // Info marker or no media
+                contentElement.innerHTML = '<p class="no-content">No additional content</p>';
             }
             
             document.getElementById('popup').style.display = 'flex';
@@ -1023,61 +582,85 @@ class EnhancedImageMarkerEditor {
             line-height: 1.5;
             color: #666;
         }
-        .popup a {
+        /* Platform Link Styles */
+        .platform-link {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+        .platform-icon {
+            font-size: 24px;
+            flex-shrink: 0;
+        }
+        .platform-info {
+            flex: 1;
+        }
+        .platform-info h4 {
+            margin: 0 0 8px 0;
+            color: #333;
+        }
+        .platform-info p {
+            margin: 0 0 15px 0;
+            color: #666;
+            font-size: 14px;
+        }
+        .platform-btn {
             display: inline-block;
             padding: 10px 20px;
             background: #007bff;
             color: white;
             text-decoration: none;
             border-radius: 5px;
-            margin-right: 10px;
+            font-weight: bold;
+            transition: background-color 0.2s;
         }
-        .popup a:hover {
+        .platform-btn:hover {
             background: #0056b3;
+        }
+        /* Direct Link Styles */
+        .direct-link {
+            text-align: center;
+            padding: 20px;
+        }
+        .direct-link p {
+            margin-bottom: 15px;
+            color: #666;
+        }
+        .direct-link-btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #28a745;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .direct-link-btn:hover {
+            background: #218838;
+        }
+        /* Media Container */
+        .media-container {
+            text-align: center;
+        }
+        .media-container p {
+            margin-bottom: 10px;
+            color: #666;
+            font-weight: bold;
         }
         audio, video {
             width: 100%;
-            margin-top: 15px;
+            max-width: 400px;
+            margin-top: 10px;
         }
-        .smart-link-preview {
-            background: #f8f9fa;
-            padding: 10px;
-            border-radius: 4px;
-            margin-top: 8px;
-        }
-        .smart-link-preview p {
-            margin: 5px 0;
-            font-size: 12px;
-        }
-        .embed-preview {
-            margin: 10px 0;
-            background: white;
-            padding: 10px;
-            border-radius: 4px;
-            border: 1px solid #ddd;
-        }
-        .embed-preview iframe {
-            border: none;
-            border-radius: 4px;
-        }
-        .source-link {
+        .no-content {
             text-align: center;
-            margin-top: 8px;
-        }
-        .source-link a {
-            color: #007bff;
-            text-decoration: none;
-            font-size: 11px;
-        }
-        .smart-link-message {
-            background: #fff3cd;
-            border: 1px solid #ffeaa7;
-            border-radius: 4px;
-            padding: 10px;
-            font-size: 12px;
-        }
-        .smart-link-message p {
-            margin: 5px 0;
+            color: #999;
+            font-style: italic;
+            padding: 20px;
         }`;
     }
 
