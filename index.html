@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Marker Tool - Editor</title>
+    <link rel="stylesheet" href="styles/editor.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Image Marker Tool</h1>
+            <div class="controls">
+                <input type="file" id="imageUpload" accept="image/*">
+                <select id="markerType">
+                    <option value="info">Info Marker</option>
+                    <option value="link">Link Marker</option>
+                    <option value="audio">Audio Marker</option>
+                    <option value="video">Video Marker</option>
+                </select>
+                <button id="exportBtn">Export HTML</button>
+                <button id="saveProject">Save Project</button>
+                <button id="loadProject">Load Project</button>
+            </div>
+        </header>
+
+        <div class="editor-area">
+            <div class="image-container" id="imageContainer">
+                <div class="placeholder">Upload an image to start</div>
+                <img id="mainImage" style="display: none;">
+                <canvas id="panoramaView" style="display: none;"></canvas>
+            </div>
+        </div>
+
+        <div class="marker-properties" id="markerProperties" style="display: none;">
+            <h3>Marker Properties</h3>
+            <div class="property-group">
+                <label>Title:</label>
+                <input type="text" id="markerTitle" placeholder="Enter title">
+            </div>
+            <div class="property-group">
+                <label>Description:</label>
+                <textarea id="markerDescription" placeholder="Enter description"></textarea>
+            </div>
+            <div class="property-group" id="linkUrlGroup" style="display: none;">
+                <label>URL:</label>
+                <input type="url" id="markerUrl" placeholder="https://example.com">
+            </div>
+            <div class="property-group" id="mediaUrlGroup" style="display: none;">
+                <label>Media URL:</label>
+                <input type="url" id="markerMediaUrl" placeholder="URL to audio/video">
+            </div>
+            <button id="saveMarker">Save Marker</button>
+            <button id="deleteMarker">Delete Marker</button>
+        </div>
+    </div>
+
+    <input type="file" id="projectUpload" style="display: none;" accept=".json">
+
+    <script src="scripts/editor.js"></script>
+</body>
+</html>
