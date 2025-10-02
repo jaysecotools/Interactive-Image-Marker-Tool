@@ -14,18 +14,15 @@ class EnhancedImageMarkerEditor {
         this.showStatus('Ready to upload image and add markers', 'success');
         this.setupKeyboardShortcuts();
         
-        // Initialize current color and opacity from controls
         this.currentMarkerColor = document.getElementById('markerColor').value;
         this.currentMarkerOpacity = parseFloat(document.getElementById('markerOpacity').value);
     }
 
     initializeEventListeners() {
-        // Image upload
         document.getElementById('imageUpload').addEventListener('change', (e) => {
             this.handleImageUpload(e.target.files[0]);
         });
 
-        // Marker type and color change
         document.getElementById('markerType').addEventListener('change', (e) => {
             this.togglePropertyFields(e.target.value);
         });
@@ -34,7 +31,6 @@ class EnhancedImageMarkerEditor {
             this.currentMarkerColor = e.target.value;
         });
 
-        // Opacity controls
         document.getElementById('markerOpacity').addEventListener('input', (e) => {
             this.currentMarkerOpacity = parseFloat(e.target.value);
         });
@@ -43,7 +39,6 @@ class EnhancedImageMarkerEditor {
             this.updateSelectedMarkersOpacity(parseFloat(e.target.value));
         });
 
-        // Image interactions
         this.container.addEventListener('click', (e) => {
             if (this.image.style.display !== 'none' && !this.dragState) {
                 this.addMarker(e);
@@ -56,7 +51,6 @@ class EnhancedImageMarkerEditor {
             }
         });
 
-        // Marker property buttons
         document.getElementById('saveMarker').addEventListener('click', () => {
             this.saveMarkerProperties();
         });
@@ -65,7 +59,6 @@ class EnhancedImageMarkerEditor {
             this.deleteSelectedMarkers();
         });
 
-        // Export/Import
         document.getElementById('exportBtn').addEventListener('click', () => {
             this.exportProject();
         });
@@ -74,12 +67,10 @@ class EnhancedImageMarkerEditor {
             this.importProject();
         });
 
-        // Clear markers
         document.getElementById('clearMarkers').addEventListener('click', () => {
             this.clearMarkers();
         });
 
-        // Undo/Redo
         document.getElementById('undoBtn').addEventListener('click', () => {
             this.undo();
         });
@@ -88,12 +79,10 @@ class EnhancedImageMarkerEditor {
             this.redo();
         });
 
-        // Search
         document.getElementById('searchMarkers').addEventListener('input', (e) => {
             this.filterMarkers(e.target.value);
         });
 
-        // URL validation and preview
         document.getElementById('markerUrl').addEventListener('blur', (e) => {
             this.validateAndPreviewUrl(e.target.value, 'link');
         });
@@ -102,7 +91,6 @@ class EnhancedImageMarkerEditor {
             this.validateAndPreviewUrl(e.target.value, 'media');
         });
 
-        // Context menu
         document.addEventListener('contextmenu', (e) => {
             this.handleContextMenu(e);
         });
@@ -111,7 +99,6 @@ class EnhancedImageMarkerEditor {
             this.hideContextMenu();
         });
 
-        // Custom color change in properties
         document.getElementById('markerCustomColor').addEventListener('change', (e) => {
             this.updateSelectedMarkersColor(e.target.value);
         });
@@ -208,8 +195,6 @@ class EnhancedImageMarkerEditor {
             markerElement.className = `marker ${marker.type}`;
             markerElement.dataset.id = marker.id;
             this.container.appendChild(markerElement);
-
-            // Drag functionality
             this.makeMarkerDraggable(markerElement);
         }
 
@@ -218,7 +203,6 @@ class EnhancedImageMarkerEditor {
         markerElement.style.backgroundColor = marker.color;
         markerElement.style.opacity = marker.opacity || 0.8;
 
-        // Update selection state
         if (this.selectedMarkers.has(marker.id)) {
             markerElement.classList.add('selected');
         } else {
@@ -310,7 +294,6 @@ class EnhancedImageMarkerEditor {
     }
 
     updateMarkerSelection() {
-        // Update visual selection
         document.querySelectorAll('.marker').forEach(markerEl => {
             const markerId = markerEl.dataset.id;
             if (this.selectedMarkers.has(markerId)) {
@@ -320,7 +303,6 @@ class EnhancedImageMarkerEditor {
             }
         });
 
-        // Update marker list
         this.updateMarkerList();
     }
 
@@ -432,7 +414,6 @@ class EnhancedImageMarkerEditor {
         this.hideMarkerProperties();
     }
 
-    // Marker List Management
     updateMarkerList() {
         const markerList = document.getElementById('markerList');
         const searchTerm = document.getElementById('searchMarkers').value.toLowerCase();
@@ -454,7 +435,6 @@ class EnhancedImageMarkerEditor {
             </div>
         `).join('');
 
-        // Add click listeners to marker list items
         markerList.querySelectorAll('.marker-item').forEach(item => {
             item.addEventListener('click', (e) => {
                 const markerId = item.dataset.id;
@@ -467,7 +447,6 @@ class EnhancedImageMarkerEditor {
         this.updateMarkerList();
     }
 
-    // URL Validation and Preview
     validateAndPreviewUrl(url, type) {
         if (!url) {
             this.hidePreview(type);
@@ -512,7 +491,6 @@ class EnhancedImageMarkerEditor {
         preview.style.display = 'none';
     }
 
-    // Context Menu
     handleContextMenu(e) {
         const markerElement = e.target.closest('.marker');
         if (markerElement) {
@@ -533,7 +511,6 @@ class EnhancedImageMarkerEditor {
         contextMenu.style.top = y + 'px';
         contextMenu.style.display = 'block';
 
-        // Add event listeners to context menu items
         contextMenu.querySelectorAll('.context-item').forEach(item => {
             item.onclick = () => this.handleContextAction(item.dataset.action);
         });
@@ -581,7 +558,6 @@ class EnhancedImageMarkerEditor {
         }
     }
 
-    // Undo/Redo System
     saveState() {
         this.undoStack.push({
             markers: JSON.parse(JSON.stringify(this.markers)),
@@ -619,7 +595,6 @@ class EnhancedImageMarkerEditor {
         this.markers = JSON.parse(JSON.stringify(state.markers));
         this.selectedMarkers = new Set(state.selectedMarkers);
         
-        // Re-render all markers
         document.querySelectorAll('.marker').forEach(marker => marker.remove());
         this.markers.forEach(marker => this.renderMarker(marker));
         this.updateMarkerSelection();
@@ -638,18 +613,31 @@ class EnhancedImageMarkerEditor {
         document.getElementById('redoBtn').disabled = this.redoStack.length === 0;
     }
 
-    // Import/Export
     exportProject() {
         if (this.markers.length === 0) {
             this.showStatus('Add at least one marker before exporting', 'error');
             return;
         }
 
-        const projectData = this.getProjectData();
-        const htmlContent = this.generateStandaloneHTML(projectData);
-        
-        HTMLExporter.download(htmlContent, 'interactive-image.html');
-        this.showStatus('HTML file downloaded successfully!', 'success');
+        if (!this.image.src || this.image.src === '') {
+            this.showStatus('Please upload an image before exporting', 'error');
+            return;
+        }
+
+        try {
+            const projectData = this.getProjectData();
+            const htmlContent = this.generateStandaloneHTML(projectData);
+            
+            const success = HTMLExporter.download(htmlContent, 'interactive-image.html');
+            if (success) {
+                this.showStatus('HTML file downloaded successfully!', 'success');
+            } else {
+                this.showStatus('File prepared - check your browser for download or save the opened page manually', 'warning');
+            }
+        } catch (error) {
+            console.error('Export error:', error);
+            this.showStatus('Error during export: ' + error.message, 'error');
+        }
     }
 
     importProject() {
@@ -699,7 +687,6 @@ class EnhancedImageMarkerEditor {
     }
 
     loadFromHTML(htmlContent) {
-        // This is a simplified HTML import - in practice, you'd want more robust parsing
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = htmlContent;
         
@@ -724,10 +711,16 @@ class EnhancedImageMarkerEditor {
     }
 
     getProjectData() {
+        let imageSrc = this.image.src;
+        
+        if (imageSrc.startsWith('data:') && imageSrc.length > 500000) {
+            console.warn('Large data URL detected, export file might be very large');
+        }
+        
         return {
-            imageSrc: this.image.src,
+            imageSrc: imageSrc,
             markers: this.markers,
-            version: '2.0'
+            version: '2.1'
         };
     }
 
@@ -976,7 +969,6 @@ class EnhancedImageMarkerEditor {
     }
 }
 
-// Initialize the enhanced editor
 document.addEventListener('DOMContentLoaded', () => {
     new EnhancedImageMarkerEditor();
 });
