@@ -7,12 +7,16 @@ class EnhancedImageMarkerEditor {
         this.undoStack = [];
         this.redoStack = [];
         this.dragState = null;
+        this.currentMarkerColor = '#6366f1';
+        this.currentMarkerOpacity = 0.8;
         
         this.initializeEventListeners();
         this.showStatus('Ready to upload image and add markers', 'success');
-        
-        // Keyboard shortcuts
         this.setupKeyboardShortcuts();
+        
+        // Initialize current color and opacity from controls
+        this.currentMarkerColor = document.getElementById('markerColor').value;
+        this.currentMarkerOpacity = parseFloat(document.getElementById('markerOpacity').value);
     }
 
     initializeEventListeners() {
@@ -28,6 +32,15 @@ class EnhancedImageMarkerEditor {
 
         document.getElementById('markerColor').addEventListener('change', (e) => {
             this.currentMarkerColor = e.target.value;
+        });
+
+        // Opacity controls
+        document.getElementById('markerOpacity').addEventListener('input', (e) => {
+            this.currentMarkerOpacity = parseFloat(e.target.value);
+        });
+
+        document.getElementById('markerCustomOpacity').addEventListener('input', (e) => {
+            this.updateSelectedMarkersOpacity(parseFloat(e.target.value));
         });
 
         // Image interactions
@@ -98,8 +111,10 @@ class EnhancedImageMarkerEditor {
             this.hideContextMenu();
         });
 
-        // Initialize current color
-        this.currentMarkerColor = document.getElementById('markerColor').value;
+        // Custom color change in properties
+        document.getElementById('markerCustomColor').addEventListener('change', (e) => {
+            this.updateSelectedMarkersColor(e.target.value);
+        });
     }
 
     setupKeyboardShortcuts() {
@@ -172,7 +187,8 @@ class EnhancedImageMarkerEditor {
             description: '',
             url: '',
             mediaUrl: '',
-            color: this.currentMarkerColor
+            color: this.currentMarkerColor,
+            opacity: this.currentMarkerOpacity
         };
 
         this.saveState();
@@ -200,6 +216,7 @@ class EnhancedImageMarkerEditor {
         markerElement.style.left = `${marker.x}%`;
         markerElement.style.top = `${marker.y}%`;
         markerElement.style.backgroundColor = marker.color;
+        markerElement.style.opacity = marker.opacity || 0.8;
 
         // Update selection state
         if (this.selectedMarkers.has(marker.id)) {
@@ -322,6 +339,7 @@ class EnhancedImageMarkerEditor {
         document.getElementById('markerUrl').value = marker.url || '';
         document.getElementById('markerMediaUrl').value = marker.mediaUrl || '';
         document.getElementById('markerCustomColor').value = marker.color || this.currentMarkerColor;
+        document.getElementById('markerCustomOpacity').value = marker.opacity || 0.8;
 
         this.togglePropertyFields(marker.type);
     }
@@ -343,6 +361,7 @@ class EnhancedImageMarkerEditor {
                 marker.url = document.getElementById('markerUrl').value;
                 marker.mediaUrl = document.getElementById('markerMediaUrl').value;
                 marker.color = document.getElementById('markerCustomColor').value;
+                marker.opacity = parseFloat(document.getElementById('markerCustomOpacity').value);
 
                 this.renderMarker(marker);
             }
@@ -350,6 +369,32 @@ class EnhancedImageMarkerEditor {
 
         this.showStatus('Marker properties saved', 'success');
         this.updateMarkerList();
+    }
+
+    updateSelectedMarkersColor(color) {
+        if (this.selectedMarkers.size === 0) return;
+        
+        this.saveState();
+        this.selectedMarkers.forEach(markerId => {
+            const marker = this.markers.find(m => m.id === markerId);
+            if (marker) {
+                marker.color = color;
+                this.renderMarker(marker);
+            }
+        });
+    }
+
+    updateSelectedMarkersOpacity(opacity) {
+        if (this.selectedMarkers.size === 0) return;
+        
+        this.saveState();
+        this.selectedMarkers.forEach(markerId => {
+            const marker = this.markers.find(m => m.id === markerId);
+            if (marker) {
+                marker.opacity = opacity;
+                this.renderMarker(marker);
+            }
+        });
     }
 
     deleteSelectedMarkers() {
@@ -401,7 +446,7 @@ class EnhancedImageMarkerEditor {
         markerList.innerHTML = filteredMarkers.map(marker => `
             <div class="marker-item ${this.selectedMarkers.has(marker.id) ? 'selected' : ''}" 
                  data-id="${marker.id}">
-                <div class="marker-icon" style="background-color: ${marker.color}"></div>
+                <div class="marker-icon" style="background-color: ${marker.color}; opacity: ${marker.opacity || 0.8}"></div>
                 <div class="marker-info">
                     <div class="marker-title">${marker.title}</div>
                     <div class="marker-type">${marker.type}</div>
@@ -522,7 +567,7 @@ class EnhancedImageMarkerEditor {
     }
 
     changeMarkerColor() {
-        const newColor = prompt('Enter new color (hex format):', '#007bff');
+        const newColor = prompt('Enter new color (hex format):', '#6366f1');
         if (newColor) {
             this.saveState();
             this.selectedMarkers.forEach(markerId => {
@@ -686,12 +731,12 @@ class EnhancedImageMarkerEditor {
         };
     }
 
-    // Keep your existing generateStandaloneHTML method, but enhance it with new features
     generateStandaloneHTML(projectData) {
-        // Enhanced version that includes all the new visual features
         const markersHTML = projectData.markers.map(marker => 
             `<div class="marker ${marker.type}" 
-                 style="left: ${marker.x}%; top: ${marker.y}%; background-color: ${marker.color || this.getDefaultColor(marker.type)};"
+                 style="left: ${marker.x}%; top: ${marker.y}%; 
+                        background-color: ${marker.color || this.getDefaultColor(marker.type)};
+                        opacity: ${marker.opacity || 0.8};"
                  data-marker='${JSON.stringify(marker).replace(/'/g, "&apos;")}'>
              </div>`
         ).join('');
@@ -703,7 +748,6 @@ class EnhancedImageMarkerEditor {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Interactive Image with Markers</title>
     <style>
-        /* Include all the enhanced CSS styles from editor.css */
         ${this.getEnhancedStyles()}
     </style>
 </head>
@@ -810,8 +854,8 @@ class EnhancedImageMarkerEditor {
         }
         .marker {
             position: absolute;
-            width: 28px;
-            height: 28px;
+            width: 20px;
+            height: 20px;
             border: 2px solid white;
             border-radius: 50%;
             cursor: pointer;
@@ -821,17 +865,17 @@ class EnhancedImageMarkerEditor {
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 14px;
+            font-size: 10px;
             font-weight: bold;
             color: white;
         }
         .marker:hover {
-            transform: translate(-50%, -50%) scale(1.3);
+            transform: translate(-50%, -50%) scale(1.4);
         }
-        .marker.info::after { content: 'i'; }
-        .marker.link::after { content: '🔗'; font-size: 12px; }
-        .marker.audio::after { content: '♪'; }
-        .marker.video::after { content: '▶'; }
+        .marker.info::after { content: 'i'; font-size: 10px; }
+        .marker.link::after { content: '🔗'; font-size: 8px; }
+        .marker.audio::after { content: '♪'; font-size: 8px; }
+        .marker.video::after { content: '▶'; font-size: 8px; }
         .popup {
             display: none;
             position: fixed;
@@ -896,12 +940,12 @@ class EnhancedImageMarkerEditor {
 
     getDefaultColor(type) {
         const colors = {
-            info: '#007bff',
-            link: '#28a745',
-            audio: '#ffc107',
-            video: '#dc3545'
+            info: '#6366f1',
+            link: '#10b981',
+            audio: '#f59e0b',
+            video: '#ef4444'
         };
-        return colors[type] || '#007bff';
+        return colors[type] || '#6366f1';
     }
 
     togglePropertyFields(markerType) {
