@@ -1,83 +1,94 @@
 class MediaURLHandler {
     static getMediaType(url) {
-        if (!url) return null;
+        if (!url) return { type: 'unknown', embedUrl: '', originalUrl: '' };
 
-        const cleanUrl = this.cleanUrl(url);
+        try {
+            // Ensure URL is properly formatted
+            const cleanUrl = this.cleanUrl(url);
+            const urlObj = new URL(cleanUrl);
 
-        const youtubePatterns = [
-            /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/,
-            /(?:https?:\/\/)?(?:www\.)?youtube\.com\/embed\/([^&\n?#]+)/,
-            /(?:https?:\/\/)?(?:www\.)?youtube\.com\/v\/([^&\n?#]+)/,
-            /(?:https?:\/\/)?(?:www\.)?youtube\.com\/shorts\/([^&\n?#]+)/
-        ];
+            const youtubePatterns = [
+                /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/,
+                /(?:https?:\/\/)?(?:www\.)?youtube\.com\/embed\/([^&\n?#]+)/,
+                /(?:https?:\/\/)?(?:www\.)?youtube\.com\/v\/([^&\n?#]+)/,
+                /(?:https?:\/\/)?(?:www\.)?youtube\.com\/shorts\/([^&\n?#]+)/
+            ];
 
-        const vimeoPatterns = [
-            /(?:https?:\/\/)?(?:www\.)?vimeo\.com\/([0-9]+)/,
-            /(?:https?:\/\/)?(?:www\.)?vimeo\.com\/groups\/[^\/]+\/videos\/([0-9]+)/,
-            /(?:https?:\/\/)?(?:www\.)?vimeo\.com\/channels\/[^\/]+\/([0-9]+)/
-        ];
+            const vimeoPatterns = [
+                /(?:https?:\/\/)?(?:www\.)?vimeo\.com\/([0-9]+)/,
+                /(?:https?:\/\/)?(?:www\.)?vimeo\.com\/groups\/[^\/]+\/videos\/([0-9]+)/,
+                /(?:https?:\/\/)?(?:www\.)?vimeo\.com\/channels\/[^\/]+\/([0-9]+)/
+            ];
 
-        const soundcloudPatterns = [
-            /(?:https?:\/\/)?(?:www\.)?soundcloud\.com\/[^\/]+\/[^\/]+/,
-            /(?:https?:\/\/)?(?:www\.)?on\.soundcloud\.com\/[^\/]+/
-        ];
+            const soundcloudPatterns = [
+                /(?:https?:\/\/)?(?:www\.)?soundcloud\.com\/[^\/]+\/[^\/]+/,
+                /(?:https?:\/\/)?(?:www\.)?on\.soundcloud\.com\/[^\/]+/
+            ];
 
-        const audioExtensions = ['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac'];
-        const videoExtensions = ['mp4', 'webm', 'ogg', 'mov', 'avi', 'mkv', 'm4v'];
+            const audioExtensions = ['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac'];
+            const videoExtensions = ['mp4', 'webm', 'ogg', 'mov', 'avi', 'mkv', 'm4v'];
 
-        const urlLower = cleanUrl.toLowerCase();
-        
-        for (const pattern of youtubePatterns) {
-            if (pattern.test(cleanUrl)) {
+            const urlLower = cleanUrl.toLowerCase();
+            
+            for (const pattern of youtubePatterns) {
+                if (pattern.test(cleanUrl)) {
+                    return { 
+                        type: 'youtube', 
+                        embedUrl: this.getYouTubeEmbedUrl(cleanUrl),
+                        originalUrl: url
+                    };
+                }
+            }
+
+            for (const pattern of vimeoPatterns) {
+                if (pattern.test(cleanUrl)) {
+                    return { 
+                        type: 'vimeo', 
+                        embedUrl: this.getVimeoEmbedUrl(cleanUrl),
+                        originalUrl: url
+                    };
+                }
+            }
+
+            for (const pattern of soundcloudPatterns) {
+                if (pattern.test(cleanUrl)) {
+                    return { 
+                        type: 'soundcloud', 
+                        embedUrl: this.getSoundCloudEmbedUrl(cleanUrl),
+                        originalUrl: url
+                    };
+                }
+            }
+
+            const extension = urlLower.split('.').pop().split('?')[0];
+            if (audioExtensions.includes(extension)) {
                 return { 
-                    type: 'youtube', 
-                    embedUrl: this.getYouTubeEmbedUrl(cleanUrl),
+                    type: 'audio', 
+                    embedUrl: url,
                     originalUrl: url
                 };
             }
-        }
-
-        for (const pattern of vimeoPatterns) {
-            if (pattern.test(cleanUrl)) {
+            if (videoExtensions.includes(extension)) {
                 return { 
-                    type: 'vimeo', 
-                    embedUrl: this.getVimeoEmbedUrl(cleanUrl),
+                    type: 'video', 
+                    embedUrl: url,
                     originalUrl: url
                 };
             }
-        }
 
-        for (const pattern of soundcloudPatterns) {
-            if (pattern.test(cleanUrl)) {
-                return { 
-                    type: 'soundcloud', 
-                    embedUrl: this.getSoundCloudEmbedUrl(cleanUrl),
-                    originalUrl: url
-                };
-            }
-        }
-
-        const extension = urlLower.split('.').pop().split('?')[0];
-        if (audioExtensions.includes(extension)) {
             return { 
-                type: 'audio', 
+                type: 'unknown', 
+                embedUrl: url,
+                originalUrl: url
+            };
+        } catch (error) {
+            console.warn('Invalid URL format:', url);
+            return { 
+                type: 'unknown', 
                 embedUrl: url,
                 originalUrl: url
             };
         }
-        if (videoExtensions.includes(extension)) {
-            return { 
-                type: 'video', 
-                embedUrl: url,
-                originalUrl: url
-            };
-        }
-
-        return { 
-            type: 'unknown', 
-            embedUrl: url,
-            originalUrl: url
-        };
     }
 
     static cleanUrl(url) {
@@ -216,88 +227,124 @@ class EnhancedImageMarkerEditor {
         this.isVRMode = false;
         this.is360Image = false;
         
+        // Initialize with proper error handling
         this.initializeEventListeners();
         this.showStatus('Ready to upload image and add markers', 'success');
         this.setupKeyboardShortcuts();
         this.setupMediaUrlHelpers();
         
-        this.currentMarkerColor = document.getElementById('markerColor').value;
-        this.currentMarkerOpacity = parseFloat(document.getElementById('markerOpacity').value);
+        // Safe element access
+        const colorInput = document.getElementById('markerColor');
+        const opacityInput = document.getElementById('markerOpacity');
+        
+        if (colorInput) this.currentMarkerColor = colorInput.value;
+        if (opacityInput) this.currentMarkerOpacity = parseFloat(opacityInput.value);
     }
 
     initializeEventListeners() {
-        document.getElementById('imageUpload').addEventListener('change', (e) => {
+        // Safe event listener binding
+        const safeAddEventListener = (id, event, handler) => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.addEventListener(event, handler);
+            } else {
+                console.warn(`Element with id '${id}' not found`);
+            }
+        };
+
+        // Bind all event listeners safely
+        safeAddEventListener('imageUpload', 'change', (e) => {
             this.handleImageUpload(e.target.files[0]);
         });
 
-        document.getElementById('markerType').addEventListener('change', (e) => {
+        safeAddEventListener('markerType', 'change', (e) => {
             this.togglePropertyFields(e.target.value);
         });
 
-        document.getElementById('markerColor').addEventListener('change', (e) => {
+        safeAddEventListener('markerColor', 'change', (e) => {
             this.currentMarkerColor = e.target.value;
         });
 
-        document.getElementById('markerOpacity').addEventListener('input', (e) => {
+        safeAddEventListener('markerOpacity', 'input', (e) => {
             this.currentMarkerOpacity = parseFloat(e.target.value);
         });
 
-        document.getElementById('markerCustomOpacity').addEventListener('input', (e) => {
+        safeAddEventListener('markerCustomOpacity', 'input', (e) => {
             this.updateSelectedMarkersOpacity(parseFloat(e.target.value));
         });
 
-        this.container.addEventListener('click', (e) => {
-            if (this.image.style.display !== 'none' && !this.dragState) {
-                this.addMarker(e);
-            }
-        });
-
-        this.container.addEventListener('dblclick', (e) => {
-            if (this.image.style.display !== 'none') {
-                this.handleDoubleClick(e);
-            }
-        });
-
-        document.getElementById('saveMarker').addEventListener('click', () => {
+        safeAddEventListener('saveMarker', 'click', () => {
             this.saveMarkerProperties();
         });
 
-        document.getElementById('deleteMarker').addEventListener('click', () => {
+        safeAddEventListener('deleteMarker', 'click', () => {
             this.deleteSelectedMarkers();
         });
 
-        document.getElementById('exportBtn').addEventListener('click', () => {
+        safeAddEventListener('exportBtn', 'click', () => {
             this.showExportOptions();
         });
 
-        document.getElementById('importBtn').addEventListener('click', () => {
+        safeAddEventListener('importBtn', 'click', () => {
             this.importProject();
         });
 
-        document.getElementById('clearMarkers').addEventListener('click', () => {
+        safeAddEventListener('clearMarkers', 'click', () => {
             this.clearMarkers();
         });
 
-        document.getElementById('undoBtn').addEventListener('click', () => {
+        safeAddEventListener('undoBtn', 'click', () => {
             this.undo();
         });
 
-        document.getElementById('redoBtn').addEventListener('click', () => {
+        safeAddEventListener('redoBtn', 'click', () => {
             this.redo();
         });
 
-        document.getElementById('searchMarkers').addEventListener('input', (e) => {
+        safeAddEventListener('searchMarkers', 'input', (e) => {
             this.filterMarkers(e.target.value);
         });
 
-        document.getElementById('markerUrl').addEventListener('blur', (e) => {
+        safeAddEventListener('markerUrl', 'blur', (e) => {
             this.validateAndPreviewUrl(e.target.value, 'link');
         });
 
-        document.getElementById('markerMediaUrl').addEventListener('blur', (e) => {
+        safeAddEventListener('markerMediaUrl', 'blur', (e) => {
             this.validateAndPreviewUrl(e.target.value, 'media');
         });
 
+        safeAddEventListener('markerCustomColor', 'change', (e) => {
+            this.updateSelectedMarkersColor(e.target.value);
+        });
+
+        safeAddEventListener('vrModeBtn', 'click', () => {
+            this.toggleVRMode();
+        });
+
+        safeAddEventListener('confirmExport', 'click', () => {
+            this.handleExportConfirm();
+        });
+
+        safeAddEventListener('cancelExport', 'click', () => {
+            this.hideExportModal();
+        });
+
+        // Container events
+        if (this.container) {
+            this.container.addEventListener('click', (e) => {
+                if (this.image.style.display !== 'none' && !this.dragState) {
+                    this.addMarker(e);
+                }
+            });
+
+            this.container.addEventListener('dblclick', (e) => {
+                if (this.image.style.display !== 'none') {
+                    this.handleDoubleClick(e);
+                }
+            });
+        }
+
+        // Context menu and modal events
         document.addEventListener('contextmenu', (e) => {
             this.handleContextMenu(e);
         });
@@ -306,29 +353,26 @@ class EnhancedImageMarkerEditor {
             this.hideContextMenu();
         });
 
-        document.getElementById('markerCustomColor').addEventListener('change', (e) => {
-            this.updateSelectedMarkersColor(e.target.value);
+        const exportModal = document.getElementById('exportModal');
+        if (exportModal) {
+            exportModal.addEventListener('click', (e) => {
+                if (e.target.id === 'exportModal') {
+                    this.hideExportModal();
+                }
+            });
+        }
+
+        // Bulk actions
+        safeAddEventListener('bulkDelete', 'click', () => {
+            this.deleteSelectedMarkers();
         });
 
-        // VR Mode Toggle
-        document.getElementById('vrModeBtn').addEventListener('click', () => {
-            this.toggleVRMode();
+        safeAddEventListener('bulkColor', 'click', () => {
+            this.changeBulkMarkerColor();
         });
 
-        // Export modal handlers
-        document.getElementById('confirmExport').addEventListener('click', () => {
-            this.handleExportConfirm();
-        });
-
-        document.getElementById('cancelExport').addEventListener('click', () => {
-            this.hideExportModal();
-        });
-
-        // Close modal when clicking outside
-        document.getElementById('exportModal').addEventListener('click', (e) => {
-            if (e.target.id === 'exportModal') {
-                this.hideExportModal();
-            }
+        safeAddEventListener('bulkClear', 'click', () => {
+            this.clearSelection();
         });
     }
 
@@ -361,6 +405,7 @@ class EnhancedImageMarkerEditor {
             } else if (e.key === 'Escape') {
                 this.clearSelection();
                 this.hideExportModal();
+                this.hideContextMenu();
             }
         });
     }
@@ -369,12 +414,16 @@ class EnhancedImageMarkerEditor {
         const mediaUrlInput = document.getElementById('markerMediaUrl');
         const linkUrlInput = document.getElementById('markerUrl');
         
-        mediaUrlInput.placeholder = "YouTube, Vimeo, SoundCloud, or direct MP4/MP3 links...";
-        linkUrlInput.placeholder = "https://example.com";
+        if (mediaUrlInput) {
+            mediaUrlInput.placeholder = "YouTube, Vimeo, SoundCloud, or direct MP4/MP3 links...";
+        }
+        if (linkUrlInput) {
+            linkUrlInput.placeholder = "https://example.com";
+        }
     }
 
     toggleVRMode() {
-        if (!this.image.src) {
+        if (!this.image || !this.image.src) {
             this.showStatus('Please upload an image first', 'warning');
             return;
         }
@@ -383,13 +432,17 @@ class EnhancedImageMarkerEditor {
         const vrButton = document.getElementById('vrModeBtn');
         
         if (this.isVRMode) {
-            vrButton.innerHTML = '<span class="material-icons">view_in_ar</span> VR Mode';
-            vrButton.classList.add('vr-active');
+            if (vrButton) {
+                vrButton.innerHTML = '<span class="material-icons">view_in_ar</span> VR Mode';
+                vrButton.classList.add('vr-active');
+            }
             this.showStatus('VR Mode: Markers will be placed in 3D space for 360° viewing', 'success');
             this.checkIf360Image();
         } else {
-            vrButton.innerHTML = '<span class="material-icons">view_in_ar</span> 2D Mode';
-            vrButton.classList.remove('vr-active');
+            if (vrButton) {
+                vrButton.innerHTML = '<span class="material-icons">view_in_ar</span> 2D Mode';
+                vrButton.classList.remove('vr-active');
+            }
             this.showStatus('2D Mode: Standard flat image markup', 'success');
         }
 
@@ -403,25 +456,39 @@ class EnhancedImageMarkerEditor {
     checkIf360Image() {
         if (this.image.naturalWidth && this.image.naturalHeight) {
             const aspectRatio = this.image.naturalWidth / this.image.naturalHeight;
-            this.is360Image = Math.abs(aspectRatio - 2.0) < 0.1;
+            // More accurate 360 detection with tolerance
+            this.is360Image = Math.abs(aspectRatio - 2.0) < 0.2;
             
             const indicator = document.getElementById('imageTypeIndicator');
-            if (this.is360Image) {
-                indicator.textContent = '🌐 360° Image';
-                indicator.className = 'image-type-indicator vr-360';
-                indicator.style.display = 'block';
-                this.showStatus('✅ 360° image detected! Perfect for VR export.', 'success');
-            } else {
-                indicator.textContent = '📷 Standard Image';
-                indicator.className = 'image-type-indicator standard';
-                indicator.style.display = 'block';
-                this.showStatus('⚠️ Image may not be 360°. For best VR results, use 2:1 aspect ratio images.', 'warning');
+            if (indicator) {
+                if (this.is360Image) {
+                    indicator.textContent = '🌐 360° Image';
+                    indicator.className = 'image-type-indicator vr-360';
+                    indicator.style.display = 'block';
+                    this.showStatus('✅ 360° image detected! Perfect for VR export.', 'success');
+                } else {
+                    indicator.textContent = '📷 Standard Image';
+                    indicator.className = 'image-type-indicator standard';
+                    indicator.style.display = 'block';
+                    this.showStatus('⚠️ Image may not be 360°. For best VR results, use 2:1 aspect ratio images.', 'warning');
+                }
             }
+        } else {
+            // Wait for image to load
+            this.image.onload = () => {
+                setTimeout(() => this.checkIf360Image(), 100);
+            };
         }
     }
 
     handleImageUpload(file) {
         if (!file) return;
+
+        // Check if it's an image file
+        if (!file.type.startsWith('image/')) {
+            this.showStatus('Please upload a valid image file', 'error');
+            return;
+        }
 
         this.saveState();
         const reader = new FileReader();
@@ -431,30 +498,38 @@ class EnhancedImageMarkerEditor {
             this.showStatus('Image loaded! Click on the image to add markers.', 'success');
         };
         reader.onerror = (e) => {
-            this.showStatus('Error loading image', 'error');
+            this.showStatus('Error loading image: ' + e.target.error, 'error');
         };
         reader.readAsDataURL(file);
     }
 
     loadImage(src) {
+        if (!this.image) return;
+        
         this.image.src = src;
         this.image.style.display = 'block';
-        this.container.querySelector('.placeholder').style.display = 'none';
+        const placeholder = this.container.querySelector('.placeholder');
+        if (placeholder) {
+            placeholder.style.display = 'none';
+        }
         this.clearMarkers();
     }
 
     addMarker(event) {
+        if (!this.container) return;
+
         const rect = this.container.getBoundingClientRect();
         const x = ((event.clientX - rect.left) / rect.width) * 100;
         const y = ((event.clientY - rect.top) / rect.height) * 100;
 
-        const markerType = document.getElementById('markerType').value;
+        const markerTypeSelect = document.getElementById('markerType');
+        const markerType = markerTypeSelect ? markerTypeSelect.value : 'info';
         
         const marker = {
-            id: Date.now().toString(),
+            id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
             type: markerType,
-            x: x,
-            y: y,
+            x: Math.max(0, Math.min(100, x)),
+            y: Math.max(0, Math.min(100, y)),
             phi: this.convertXToPhi(x),
             theta: this.convertYToTheta(y),
             is3D: this.isVRMode,
@@ -463,7 +538,8 @@ class EnhancedImageMarkerEditor {
             url: '',
             mediaUrl: '',
             color: this.currentMarkerColor,
-            opacity: this.currentMarkerOpacity
+            opacity: this.currentMarkerOpacity,
+            createdAt: new Date().toISOString()
         };
 
         this.saveState();
@@ -474,6 +550,7 @@ class EnhancedImageMarkerEditor {
         const modeText = this.isVRMode ? '3D VR' : '2D';
         this.showStatus(`Added ${markerType} marker in ${modeText} mode`, 'success');
         this.updateMarkerList();
+        this.updateBulkActions();
     }
 
     convertXToPhi(x) {
@@ -485,12 +562,15 @@ class EnhancedImageMarkerEditor {
     }
 
     renderMarker(marker) {
+        if (!this.container) return;
+
         let markerElement = this.container.querySelector(`[data-id="${marker.id}"]`);
         
         if (!markerElement) {
             markerElement = document.createElement('div');
             markerElement.className = `marker ${marker.type}`;
             markerElement.dataset.id = marker.id;
+            markerElement.setAttribute('aria-label', `${marker.type} marker: ${marker.title}`);
             this.container.appendChild(markerElement);
             this.makeMarkerDraggable(markerElement);
         }
@@ -522,7 +602,7 @@ class EnhancedImageMarkerEditor {
         markerElement.addEventListener('click', (e) => {
             e.stopPropagation();
             const markerId = markerElement.dataset.id;
-            this.selectMarker(markerId, e.shiftKey);
+            this.selectMarker(markerId, e.shiftKey || e.ctrlKey || e.metaKey);
         });
 
         markerElement.addEventListener('dblclick', (e) => {
@@ -593,9 +673,12 @@ class EnhancedImageMarkerEditor {
         }
 
         this.updateMarkerSelection();
+        this.updateBulkActions();
         
         if (this.selectedMarkers.size === 1) {
             this.showMarkerProperties();
+        } else if (this.selectedMarkers.size > 1) {
+            this.showBulkProperties();
         } else {
             this.hideMarkerProperties();
         }
@@ -614,6 +697,20 @@ class EnhancedImageMarkerEditor {
         this.updateMarkerList();
     }
 
+    updateBulkActions() {
+        const bulkActions = document.getElementById('bulkActions');
+        const bulkCount = document.getElementById('bulkCount');
+        
+        if (bulkActions && bulkCount) {
+            if (this.selectedMarkers.size > 1) {
+                bulkCount.textContent = `${this.selectedMarkers.size} markers selected`;
+                bulkActions.style.display = 'flex';
+            } else {
+                bulkActions.style.display = 'none';
+            }
+        }
+    }
+
     showMarkerProperties() {
         if (this.selectedMarkers.size !== 1) return;
 
@@ -622,6 +719,8 @@ class EnhancedImageMarkerEditor {
         if (!marker) return;
 
         const propsPanel = document.getElementById('markerProperties');
+        if (!propsPanel) return;
+
         propsPanel.style.display = 'block';
 
         document.getElementById('markerTitle').value = marker.title || '';
@@ -641,8 +740,18 @@ class EnhancedImageMarkerEditor {
         }
     }
 
+    showBulkProperties() {
+        const propsPanel = document.getElementById('markerProperties');
+        if (propsPanel) {
+            propsPanel.style.display = 'none';
+        }
+    }
+
     hideMarkerProperties() {
-        document.getElementById('markerProperties').style.display = 'none';
+        const propsPanel = document.getElementById('markerProperties');
+        if (propsPanel) {
+            propsPanel.style.display = 'none';
+        }
     }
 
     saveMarkerProperties() {
@@ -653,12 +762,12 @@ class EnhancedImageMarkerEditor {
         this.selectedMarkers.forEach(markerId => {
             const marker = this.markers.find(m => m.id === markerId);
             if (marker) {
-                marker.title = document.getElementById('markerTitle').value;
-                marker.description = document.getElementById('markerDescription').value;
-                marker.url = document.getElementById('markerUrl').value;
-                marker.mediaUrl = document.getElementById('markerMediaUrl').value;
+                marker.title = document.getElementById('markerTitle').value || `Marker ${markerId}`;
+                marker.description = document.getElementById('markerDescription').value || '';
+                marker.url = document.getElementById('markerUrl').value || '';
+                marker.mediaUrl = document.getElementById('markerMediaUrl').value || '';
                 marker.color = document.getElementById('markerCustomColor').value;
-                marker.opacity = parseFloat(document.getElementById('markerCustomOpacity').value);
+                marker.opacity = parseFloat(document.getElementById('markerCustomOpacity').value) || 0.8;
 
                 this.renderMarker(marker);
             }
@@ -679,6 +788,8 @@ class EnhancedImageMarkerEditor {
                 this.renderMarker(marker);
             }
         });
+        
+        this.showStatus(`Updated color for ${this.selectedMarkers.size} markers`, 'success');
     }
 
     updateSelectedMarkersOpacity(opacity) {
@@ -697,6 +808,10 @@ class EnhancedImageMarkerEditor {
     deleteSelectedMarkers() {
         if (this.selectedMarkers.size === 0) return;
 
+        if (!confirm(`Delete ${this.selectedMarkers.size} marker(s)?`)) {
+            return;
+        }
+
         this.saveState();
 
         this.selectedMarkers.forEach(markerId => {
@@ -709,16 +824,24 @@ class EnhancedImageMarkerEditor {
 
         this.selectedMarkers.clear();
         this.hideMarkerProperties();
-        this.showStatus('Markers deleted', 'success');
+        this.updateBulkActions();
+        this.showStatus(`Deleted ${this.selectedMarkers.size} markers`, 'success');
         this.updateMarkerList();
     }
 
     clearMarkers() {
+        if (this.markers.length === 0) return;
+        
+        if (!confirm('Clear all markers?')) {
+            return;
+        }
+
         this.saveState();
         this.markers = [];
         this.selectedMarkers.clear();
         document.querySelectorAll('.marker').forEach(marker => marker.remove());
         this.hideMarkerProperties();
+        this.updateBulkActions();
         this.showStatus('All markers cleared', 'success');
         this.updateMarkerList();
     }
@@ -727,11 +850,20 @@ class EnhancedImageMarkerEditor {
         this.selectedMarkers.clear();
         this.updateMarkerSelection();
         this.hideMarkerProperties();
+        this.updateBulkActions();
     }
 
     updateMarkerList() {
         const markerList = document.getElementById('markerList');
-        const searchTerm = document.getElementById('searchMarkers').value.toLowerCase();
+        if (!markerList) return;
+
+        const searchInput = document.getElementById('searchMarkers');
+        const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+
+        if (this.markers.length === 0) {
+            markerList.innerHTML = '<div class="no-markers" style="padding: 20px; text-align: center; color: var(--text-muted);">No markers yet. Click on the image to add markers.</div>';
+            return;
+        }
 
         const filteredMarkers = this.markers.filter(marker => 
             marker.title.toLowerCase().includes(searchTerm) ||
@@ -739,12 +871,18 @@ class EnhancedImageMarkerEditor {
             marker.type.toLowerCase().includes(searchTerm)
         );
 
+        if (filteredMarkers.length === 0) {
+            markerList.innerHTML = '<div class="no-markers" style="padding: 20px; text-align: center; color: var(--text-muted);">No markers match your search.</div>';
+            return;
+        }
+
         markerList.innerHTML = filteredMarkers.map(marker => `
             <div class="marker-item ${this.selectedMarkers.has(marker.id) ? 'selected' : ''}" 
-                 data-id="${marker.id}">
+                 data-id="${marker.id}"
+                 aria-label="${marker.title} - ${marker.type} marker">
                 <div class="marker-icon" style="background-color: ${marker.color}; opacity: ${marker.opacity || 0.8}"></div>
                 <div class="marker-info">
-                    <div class="marker-title">${marker.title}</div>
+                    <div class="marker-title">${this.escapeHtml(marker.title)}</div>
                     <div class="marker-type">${marker.type} ${marker.is3D ? '(VR)' : ''}</div>
                 </div>
             </div>
@@ -753,9 +891,18 @@ class EnhancedImageMarkerEditor {
         markerList.querySelectorAll('.marker-item').forEach(item => {
             item.addEventListener('click', (e) => {
                 const markerId = item.dataset.id;
-                this.selectMarker(markerId, e.shiftKey);
+                this.selectMarker(markerId, e.shiftKey || e.ctrlKey || e.metaKey);
             });
         });
+    }
+
+    escapeHtml(unsafe) {
+        return unsafe
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
     }
 
     filterMarkers(searchTerm) {
@@ -768,7 +915,14 @@ class EnhancedImageMarkerEditor {
             return;
         }
 
+        if (!this.image || !this.image.src) {
+            this.showStatus('Please upload an image before exporting', 'error');
+            return;
+        }
+
         const modal = document.getElementById('exportModal');
+        if (!modal) return;
+
         modal.style.display = 'flex';
 
         // Reset selections and add click handlers
@@ -780,18 +934,22 @@ class EnhancedImageMarkerEditor {
             };
         });
         
-        // Auto-select based on current mode
+        // Auto-select based on current mode and image type
         const has3DMarkers = this.markers.some(marker => marker.is3D);
-        if (this.isVRMode || has3DMarkers) {
-            modal.querySelector('.export-option[data-type="vr"]').classList.add('selected');
+        if ((this.isVRMode || has3DMarkers) && this.is360Image) {
+            const vrOption = modal.querySelector('.export-option[data-type="vr"]');
+            if (vrOption) vrOption.classList.add('selected');
         } else {
-            modal.querySelector('.export-option[data-type="2d"]').classList.add('selected');
+            const option2d = modal.querySelector('.export-option[data-type="2d"]');
+            if (option2d) option2d.classList.add('selected');
         }
     }
 
     hideExportModal() {
         const modal = document.getElementById('exportModal');
-        modal.style.display = 'none';
+        if (modal) {
+            modal.style.display = 'none';
+        }
     }
 
     handleExportConfirm() {
@@ -814,26 +972,43 @@ class EnhancedImageMarkerEditor {
     }
 
     export2DProject() {
-        const projectData = this.getProjectData();
-        const htmlContent = this.generateStandaloneHTML(projectData);
-        
-        HTMLExporter.download(htmlContent, 'interactive-image-2d.html');
-        this.showStatus('2D HTML file downloaded successfully!', 'success');
+        try {
+            const projectData = this.getProjectData();
+            const htmlContent = this.generateStandaloneHTML(projectData);
+            
+            HTMLExporter.download(htmlContent, 'interactive-image-2d.html');
+            this.showStatus('2D HTML file downloaded successfully!', 'success');
+        } catch (error) {
+            console.error('Export error:', error);
+            this.showStatus('Error during export: ' + error.message, 'error');
+        }
     }
 
     exportVRProject() {
-        const projectData = this.getProjectData();
-        const htmlContent = this.generateVRHTML(projectData);
-        
-        HTMLExporter.download(htmlContent, 'interactive-image-vr.html');
-        this.showStatus('VR 360° HTML file downloaded successfully! Open in browser and use VR headset!', 'success');
+        try {
+            const projectData = this.getProjectData();
+            const htmlContent = this.generateVRHTML(projectData);
+            
+            HTMLExporter.download(htmlContent, 'interactive-image-vr.html');
+            this.showStatus('VR 360° HTML file downloaded successfully! Open in browser and use VR headset!', 'success');
+        } catch (error) {
+            console.error('VR Export error:', error);
+            this.showStatus('Error during VR export: ' + error.message, 'error');
+        }
     }
 
     saveState() {
         this.undoStack.push({
             markers: JSON.parse(JSON.stringify(this.markers)),
-            selectedMarkers: new Set(this.selectedMarkers)
+            selectedMarkers: Array.from(this.selectedMarkers),
+            imageSrc: this.image ? this.image.src : ''
         });
+        
+        // Limit undo stack size
+        if (this.undoStack.length > 50) {
+            this.undoStack.shift();
+        }
+        
         this.redoStack = [];
         this.updateUndoRedoButtons();
     }
@@ -843,11 +1018,14 @@ class EnhancedImageMarkerEditor {
 
         this.redoStack.push({
             markers: JSON.parse(JSON.stringify(this.markers)),
-            selectedMarkers: new Set(this.selectedMarkers)
+            selectedMarkers: Array.from(this.selectedMarkers),
+            imageSrc: this.image ? this.image.src : ''
         });
 
         const state = this.undoStack.pop();
         this.restoreState(state);
+        
+        this.showStatus('Undo: Reverted changes', 'success');
     }
 
     redo() {
@@ -855,22 +1033,31 @@ class EnhancedImageMarkerEditor {
 
         this.undoStack.push({
             markers: JSON.parse(JSON.stringify(this.markers)),
-            selectedMarkers: new Set(this.selectedMarkers)
+            selectedMarkers: Array.from(this.selectedMarkers),
+            imageSrc: this.image ? this.image.src : ''
         });
 
         const state = this.redoStack.pop();
         this.restoreState(state);
+        
+        this.showStatus('Redo: Restored changes', 'success');
     }
 
     restoreState(state) {
         this.markers = JSON.parse(JSON.stringify(state.markers));
-        this.selectedMarkers = new Set(state.selectedMarkers);
+        this.selectedMarkers = new Set(state.selectedMarkers || []);
+        
+        // Restore image if it changed
+        if (state.imageSrc && this.image && this.image.src !== state.imageSrc) {
+            this.loadImage(state.imageSrc);
+        }
         
         document.querySelectorAll('.marker').forEach(marker => marker.remove());
         this.markers.forEach(marker => this.renderMarker(marker));
         this.updateMarkerSelection();
         this.updateMarkerList();
         this.updateUndoRedoButtons();
+        this.updateBulkActions();
 
         if (this.selectedMarkers.size === 1) {
             this.showMarkerProperties();
@@ -880,18 +1067,27 @@ class EnhancedImageMarkerEditor {
     }
 
     updateUndoRedoButtons() {
-        document.getElementById('undoBtn').disabled = this.undoStack.length === 0;
-        document.getElementById('redoBtn').disabled = this.redoStack.length === 0;
+        const undoBtn = document.getElementById('undoBtn');
+        const redoBtn = document.getElementById('redoBtn');
+        
+        if (undoBtn) undoBtn.disabled = this.undoStack.length === 0;
+        if (redoBtn) redoBtn.disabled = this.redoStack.length === 0;
     }
 
     importProject() {
         const input = document.createElement('input');
         input.type = 'file';
-        input.accept = '.json,.html';
+        input.accept = '.json,.html,.txt';
         
         input.onchange = (e) => {
             const file = e.target.files[0];
             if (!file) return;
+
+            // Check file size (max 10MB)
+            if (file.size > 10 * 1024 * 1024) {
+                this.showStatus('File too large. Maximum size is 10MB.', 'error');
+                return;
+            }
 
             const reader = new FileReader();
             reader.onload = (e) => {
@@ -908,9 +1104,15 @@ class EnhancedImageMarkerEditor {
                     
                     this.showStatus('Project imported successfully', 'success');
                 } catch (error) {
+                    console.error('Import error:', error);
                     this.showStatus('Error importing project: ' + error.message, 'error');
                 }
             };
+            
+            reader.onerror = (e) => {
+                this.showStatus('Error reading file', 'error');
+            };
+            
             reader.readAsText(file);
         };
         
@@ -925,8 +1127,15 @@ class EnhancedImageMarkerEditor {
             this.markers = projectData.markers;
             this.selectedMarkers.clear();
             document.querySelectorAll('.marker').forEach(marker => marker.remove());
-            this.markers.forEach(marker => this.renderMarker(marker));
+            this.markers.forEach(marker => {
+                // Ensure markers have required properties
+                marker.is3D = marker.is3D || false;
+                marker.opacity = marker.opacity || 0.8;
+                marker.color = marker.color || this.getDefaultColor(marker.type);
+                this.renderMarker(marker);
+            });
             this.updateMarkerList();
+            this.updateBulkActions();
         }
     }
 
@@ -943,37 +1152,48 @@ class EnhancedImageMarkerEditor {
         this.markers = [];
         markers.forEach(markerEl => {
             try {
-                const markerData = JSON.parse(markerEl.getAttribute('data-marker').replace(/&apos;/g, "'"));
-                this.markers.push(markerData);
-                this.renderMarker(markerData);
+                const markerDataStr = markerEl.getAttribute('data-marker');
+                if (markerDataStr) {
+                    const markerData = JSON.parse(markerDataStr.replace(/&apos;/g, "'"));
+                    this.markers.push(markerData);
+                    this.renderMarker(markerData);
+                }
             } catch (e) {
                 console.warn('Could not parse marker data:', e);
             }
         });
         
         this.updateMarkerList();
+        this.updateBulkActions();
     }
 
     getProjectData() {
         return {
-            imageSrc: this.image.src,
+            imageSrc: this.image ? this.image.src : '',
             markers: this.markers,
-            version: '2.0'
+            version: '2.1',
+            exportDate: new Date().toISOString(),
+            totalMarkers: this.markers.length,
+            hasVRMarkers: this.markers.some(m => m.is3D)
         };
     }
 
     generateStandaloneHTML(projectData) {
         const markersHTML = projectData.markers.map(marker => {
-            let markerData = marker;
+            let markerData = { ...marker };
+            // Ensure media type is detected
             if (marker.mediaUrl && !marker.mediaType) {
                 const mediaInfo = MediaURLHandler.getMediaType(marker.mediaUrl);
                 markerData = { ...marker, mediaType: mediaInfo.type };
             }
+            
+            const escapedData = JSON.stringify(markerData).replace(/'/g, "&apos;");
             return `<div class="marker ${marker.type}" 
                  style="left: ${marker.x}%; top: ${marker.y}%; 
                         background-color: ${marker.color || this.getDefaultColor(marker.type)};
                         opacity: ${marker.opacity || 0.8};"
-                 data-marker='${JSON.stringify(markerData).replace(/'/g, "&apos;")}'>
+                 data-marker='${escapedData}'
+                 title="${this.escapeHtml(marker.title)}">
              </div>`;
         }).join('');
 
@@ -989,18 +1209,18 @@ class EnhancedImageMarkerEditor {
 </head>
 <body>
     <div class="viewer-container">
-        <div class="image-container">
-            <img id="mainImage" src="${projectData.imageSrc}" alt="Interactive Image">
+        <div class="image-container" id="imageContainer">
+            <img id="mainImage" src="${projectData.imageSrc}" alt="Interactive Image with Markers">
             ${markersHTML}
         </div>
     </div>
 
     <div class="popup" id="popup">
         <div class="popup-content">
-            <button class="close-btn" onclick="closePopup()">&times;</button>
+            <button class="close-btn" onclick="closePopup()" aria-label="Close popup">&times;</button>
             <h3 id="popupTitle"></h3>
             <p id="popupDescription"></p>
-            <a id="popupLink" target="_blank" style="display: none;">Visit Link</a>
+            <a id="popupLink" target="_blank" rel="noopener" style="display: none;">Visit Link</a>
             <div id="popupMedia"></div>
         </div>
     </div>
@@ -1013,30 +1233,38 @@ class EnhancedImageMarkerEditor {
     }
 
     generateVRHTML(projectData) {
-        // Use ALL markers for VR export, not just 3D ones
-        const markers = projectData.markers;
+        // Use ALL markers for VR export, convert 2D markers to 3D if needed
+        const markers = projectData.markers.map(marker => ({
+            ...marker,
+            // Ensure 3D coordinates for VR
+            phi: marker.phi || this.convertXToPhi(marker.x),
+            theta: marker.theta || this.convertYToTheta(marker.y)
+        }));
         
         const markersHTML = markers.map(marker => {
+            const position = this.sphericalToCartesian(marker.phi, marker.theta, 1.5);
+            const escapedData = JSON.stringify(marker).replace(/'/g, "&apos;");
+            
             return `
             <a-entity class="vr-marker" 
-                data-marker='${JSON.stringify(marker).replace(/'/g, "&apos;")}'
-                position="${this.sphericalToCartesian(marker.phi, marker.theta, 1.5)}"
+                data-marker='${escapedData}'
+                position="${position}"
                 animation="property: scale; to: 1.2 1.2 1.2; dur: 1000; easing: easeInOutQuad; loop: true; dir: alternate">
                 
                 <a-sphere 
                     class="hotspot"
-                    radius="0.1" 
+                    radius="0.08" 
                     color="${marker.color}"
                     opacity="${marker.opacity || 0.8}"
-                    animation="property: scale; to: 1.5 1.5 1.5; dur: 2000; easing: easeInOutQuad; loop: true; dir: alternate">
+                    animation="property: scale; to: 1.3 1.3 1.3; dur: 2000; easing: easeInOutQuad; loop: true; dir: alternate">
                 </a-sphere>
                 
                 <a-text 
-                    value="${marker.title}" 
-                    position="0 0.3 0" 
+                    value="${this.escapeHtml(marker.title)}" 
+                    position="0 0.2 0" 
                     align="center" 
                     color="white"
-                    scale="0.8 0.8 0.8">
+                    scale="0.5 0.5 0.5">
                 </a-text>
             </a-entity>`;
         }).join('');
@@ -1049,18 +1277,22 @@ class EnhancedImageMarkerEditor {
     <title>360° VR Experience</title>
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
     <style>
-        body { margin: 0; overflow: hidden; }
+        body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; }
         .info-panel {
             position: fixed;
             top: 20px;
             left: 20px;
-            background: rgba(0,0,0,0.8);
+            background: rgba(0,0,0,0.9);
             color: white;
             padding: 20px;
             border-radius: 10px;
             max-width: 400px;
+            max-height: 80vh;
+            overflow-y: auto;
             z-index: 1000;
             display: none;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
         }
         .close-btn {
             position: absolute;
@@ -1071,6 +1303,12 @@ class EnhancedImageMarkerEditor {
             color: white;
             font-size: 20px;
             cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         .media-container {
             margin-top: 15px;
@@ -1084,6 +1322,10 @@ class EnhancedImageMarkerEditor {
             padding: 10px 20px;
             border-radius: 25px;
             z-index: 1000;
+            display: flex;
+            gap: 10px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
         }
         .vr-controls button {
             background: rgba(255,255,255,0.2);
@@ -1092,12 +1334,16 @@ class EnhancedImageMarkerEditor {
             padding: 8px 16px;
             border-radius: 20px;
             cursor: pointer;
-            margin: 0 5px;
+            transition: all 0.3s ease;
         }
+        .vr-controls button:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        a-scene { width: 100vw; height: 100vh; }
     </style>
 </head>
 <body>
-    <a-scene embedded vr-mode-ui="enabled: true" xr-mode-ui="enabled: true">
+    <a-scene embedded vr-mode-ui="enabled: true" xr-mode-ui="enabled: true" loading-screen="dotsColor: #6366f1; backgroundColor: #000">
         <!-- 360° Image -->
         <a-sky src="${projectData.imageSrc}" rotation="0 -90 0"></a-sky>
         
@@ -1109,14 +1355,18 @@ class EnhancedImageMarkerEditor {
             <a-entity laser-controls hand="right"></a-entity>
             <a-entity laser-controls hand="left"></a-entity>
         </a-entity>
+        
+        <!-- Lighting -->
+        <a-entity light="type: ambient; color: #CCC; intensity: 0.6"></a-entity>
+        <a-entity light="type: directional; color: #FFF; intensity: 0.5" position="-1 1 0"></a-entity>
     </a-scene>
 
     <!-- Info Panel -->
     <div class="info-panel" id="infoPanel">
-        <button class="close-btn" onclick="closeInfoPanel()">&times;</button>
+        <button class="close-btn" onclick="closeInfoPanel()" aria-label="Close info panel">&times;</button>
         <h3 id="panelTitle"></h3>
         <p id="panelDescription"></p>
-        <a id="panelLink" target="_blank" style="display: none;">Visit Link</a>
+        <a id="panelLink" target="_blank" rel="noopener" style="display: none; color: #6366f1; text-decoration: underline;">Visit Link</a>
         <div class="media-container" id="panelMedia"></div>
     </div>
 
@@ -1124,10 +1374,11 @@ class EnhancedImageMarkerEditor {
     <div class="vr-controls">
         <button onclick="enterVR()">🎮 Enter VR</button>
         <button onclick="resetView()">🔄 Reset View</button>
-        <button onclick="showAllMarkers()">📍 Show Markers</button>
+        <button onclick="closeInfoPanel()">❌ Close Info</button>
     </div>
 
     <script>
+        // Marker interaction
         document.querySelectorAll('.vr-marker').forEach(marker => {
             marker.addEventListener('click', function() {
                 const markerData = JSON.parse(this.getAttribute('data-marker'));
@@ -1136,7 +1387,7 @@ class EnhancedImageMarkerEditor {
         });
 
         function showMarkerInfo(marker) {
-            document.getElementById('panelTitle').textContent = marker.title;
+            document.getElementById('panelTitle').textContent = marker.title || 'Marker';
             document.getElementById('panelDescription').textContent = marker.description || '';
             
             const linkElement = document.getElementById('panelLink');
@@ -1164,39 +1415,44 @@ class EnhancedImageMarkerEditor {
 
         function enterVR() {
             const scene = document.querySelector('a-scene');
-            if (scene.hasAttribute('vr-mode-ui')) {
+            if (scene && scene.enterVR) {
                 scene.enterVR();
             }
         }
 
         function resetView() {
             const camera = document.querySelector('[camera]');
-            camera.setAttribute('rotation', '0 0 0');
-        }
-
-        function showAllMarkers() {
-            document.querySelectorAll('.vr-marker').forEach(marker => {
-                marker.setAttribute('visible', 'true');
-            });
+            if (camera) {
+                camera.setAttribute('rotation', '0 0 0');
+            }
         }
 
         function getMediaEmbed(url) {
+            if (!url) return '';
+            
+            // YouTube
             if (url.includes('youtube.com') || url.includes('youtu.be')) {
                 const videoId = extractYouTubeId(url);
                 if (videoId) {
-                    return '<div style="margin-top: 10px;"><iframe width="100%" height="200" src="https://www.youtube.com/embed/' + videoId + '" frameborder="0" allowfullscreen></iframe></div>';
+                    return '<div style="margin-top: 10px;"><iframe width="100%" height="200" src="https://www.youtube.com/embed/' + videoId + '?rel=0&modestbranding=1" frameborder="0" allowfullscreen></iframe></div>';
                 }
             }
+            
+            // Vimeo
             if (url.includes('vimeo.com')) {
                 const videoId = extractVimeoId(url);
                 if (videoId) {
-                    return '<div style="margin-top: 10px;"><iframe width="100%" height="200" src="https://player.vimeo.com/video/' + videoId + '" frameborder="0" allowfullscreen></iframe></div>';
+                    return '<div style="margin-top: 10px;"><iframe width="100%" height="200" src="https://player.vimeo.com/video/' + videoId + '?title=0&byline=0&portrait=0" frameborder="0" allowfullscreen></iframe></div>';
                 }
             }
+            
+            // Audio files
             if (url.match(/\\.(mp3|wav|ogg|m4a)(\\?.*)?$/i)) {
-                return '<audio controls style="width: 100%; margin-top: 10px;"><source src="' + url + '"></audio>';
+                return '<audio controls style="width: 100%; margin-top: 10px;"><source src="' + url + '">Your browser does not support audio.</audio>';
             }
-            return '<a href="' + url + '" target="_blank" style="display: inline-block; padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 5px; margin-top: 10px;">Open Media</a>';
+            
+            // Default link
+            return '<a href="' + url + '" target="_blank" rel="noopener" style="display: inline-block; padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 5px; margin-top: 10px;">Open Media</a>';
         }
 
         function extractYouTubeId(url) {
@@ -1216,9 +1472,19 @@ class EnhancedImageMarkerEditor {
             return match ? match[1] : null;
         }
 
+        // Close info panel when clicking outside
         document.addEventListener('click', (e) => {
-            if (!document.getElementById('infoPanel').contains(e.target) && 
+            const infoPanel = document.getElementById('infoPanel');
+            if (infoPanel && infoPanel.style.display === 'block' && 
+                !infoPanel.contains(e.target) && 
                 !e.target.closest('.vr-marker')) {
+                closeInfoPanel();
+            }
+        });
+
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
                 closeInfoPanel();
             }
         });
@@ -1228,14 +1494,16 @@ class EnhancedImageMarkerEditor {
     }
 
     sphericalToCartesian(phi, theta, radius) {
+        // Convert to radians and adjust for A-Frame coordinate system
         const phiRad = (phi * Math.PI) / 180;
         const thetaRad = (theta * Math.PI) / 180;
         
-        const x = -radius * Math.sin(phiRad) * Math.cos(thetaRad);
-        const y = radius * Math.sin(thetaRad);
-        const z = -radius * Math.cos(phiRad) * Math.cos(thetaRad);
+        // A-Frame uses Y-up, right-handed coordinate system
+        const x = radius * Math.sin(thetaRad) * Math.sin(phiRad);
+        const y = radius * Math.cos(thetaRad);
+        const z = radius * Math.sin(thetaRad) * Math.cos(phiRad);
         
-        return `${x} ${y} ${z}`;
+        return `${x.toFixed(3)} ${y.toFixed(3)} ${z.toFixed(3)}`;
     }
 
     getDefaultColor(type) {
@@ -1249,10 +1517,15 @@ class EnhancedImageMarkerEditor {
     }
 
     togglePropertyFields(markerType) {
-        document.getElementById('linkUrlGroup').style.display = 
-            markerType === 'link' ? 'block' : 'none';
-        document.getElementById('mediaUrlGroup').style.display = 
-            markerType === 'audio' || markerType === 'video' ? 'block' : 'none';
+        const linkUrlGroup = document.getElementById('linkUrlGroup');
+        const mediaUrlGroup = document.getElementById('mediaUrlGroup');
+        
+        if (linkUrlGroup) {
+            linkUrlGroup.style.display = markerType === 'link' ? 'block' : 'none';
+        }
+        if (mediaUrlGroup) {
+            mediaUrlGroup.style.display = (markerType === 'audio' || markerType === 'video') ? 'block' : 'none';
+        }
     }
 
     handleDoubleClick(e) {
@@ -1266,22 +1539,28 @@ class EnhancedImageMarkerEditor {
 
     showStatus(message, type) {
         const statusEl = document.getElementById('status');
+        if (!statusEl) return;
+
         statusEl.textContent = message;
         statusEl.className = `status ${type}`;
         statusEl.style.display = 'block';
         
+        // Auto-hide success messages, keep errors visible longer
+        const hideDelay = type === 'error' ? 8000 : 4000;
+        
         setTimeout(() => {
             statusEl.style.display = 'none';
-        }, 4000);
+        }, hideDelay);
     }
 
     validateAndPreviewUrl(url, type) {
-        if (!url) {
+        if (!url || url.trim() === '') {
             this.hidePreview(type);
             return false;
         }
 
         try {
+            // Basic URL validation
             new URL(url);
             
             const mediaInfo = MediaURLHandler.getMediaType(url);
@@ -1294,7 +1573,7 @@ class EnhancedImageMarkerEditor {
             
             return true;
         } catch (e) {
-            this.showStatus('Invalid URL format', 'warning');
+            this.showStatus('Invalid URL format. Please include http:// or https://', 'warning');
             this.hidePreview(type);
             return false;
         }
@@ -1302,20 +1581,22 @@ class EnhancedImageMarkerEditor {
 
     showLinkPreview(url, mediaInfo) {
         const preview = document.getElementById('linkPreview');
+        if (!preview) return;
         
         if (mediaInfo.type !== 'unknown') {
-            preview.innerHTML = `🔗 ${mediaInfo.type.toUpperCase()} Link: <a href="${url}" target="_blank">${url}</a>`;
+            preview.innerHTML = `🔗 ${mediaInfo.type.toUpperCase()} Link: <a href="${url}" target="_blank" rel="noopener">${url}</a>`;
         } else {
-            preview.innerHTML = `🔗 External Link: <a href="${url}" target="_blank">${url}</a>`;
+            preview.innerHTML = `🔗 External Link: <a href="${url}" target="_blank" rel="noopener">${url}</a>`;
         }
         preview.style.display = 'block';
     }
 
     showMediaPreview(url, mediaInfo) {
         const preview = document.getElementById('mediaPreview');
+        if (!preview) return;
         
         if (mediaInfo.type === 'unknown') {
-            preview.innerHTML = '❌ Unsupported media format or URL';
+            preview.innerHTML = '<div style="color: var(--danger-color);">❌ Unsupported media format or URL</div>';
             preview.style.display = 'block';
             return;
         }
@@ -1346,7 +1627,7 @@ class EnhancedImageMarkerEditor {
             ${specialNote}
             ${MediaURLHandler.generateEmbedCode(mediaInfo, '100%', '200')}
             <div style="margin-top: 8px; font-size: 12px; color: var(--text-secondary);">
-                Source: <a href="${url}" target="_blank">${url}</a>
+                Source: <a href="${url}" target="_blank" rel="noopener">${url}</a>
             </div>
         `;
         preview.style.display = 'block';
@@ -1356,7 +1637,9 @@ class EnhancedImageMarkerEditor {
         const preview = type === 'link' ? 
             document.getElementById('linkPreview') : 
             document.getElementById('mediaPreview');
-        preview.style.display = 'none';
+        if (preview) {
+            preview.style.display = 'none';
+        }
     }
 
     handleContextMenu(e) {
@@ -1375,18 +1658,34 @@ class EnhancedImageMarkerEditor {
 
     showContextMenu(x, y) {
         const contextMenu = document.getElementById('contextMenu');
-        contextMenu.style.left = x + 'px';
-        contextMenu.style.top = y + 'px';
+        if (!contextMenu) return;
+
+        // Position context menu ensuring it stays within viewport
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        const menuWidth = 160;
+        const menuHeight = 120;
+
+        const adjustedX = x + menuWidth > viewportWidth ? x - menuWidth : x;
+        const adjustedY = y + menuHeight > viewportHeight ? y - menuHeight : y;
+
+        contextMenu.style.left = adjustedX + 'px';
+        contextMenu.style.top = adjustedY + 'px';
         contextMenu.style.display = 'block';
 
         contextMenu.querySelectorAll('.context-item').forEach(item => {
-            item.onclick = () => this.handleContextAction(item.dataset.action);
+            item.onclick = (e) => {
+                e.stopPropagation();
+                this.handleContextAction(item.dataset.action);
+            };
         });
     }
 
     hideContextMenu() {
         const contextMenu = document.getElementById('contextMenu');
-        contextMenu.style.display = 'none';
+        if (contextMenu) {
+            contextMenu.style.display = 'none';
+        }
     }
 
     handleContextAction(action) {
@@ -1407,22 +1706,31 @@ class EnhancedImageMarkerEditor {
     editMarkerProperties() {
         if (this.selectedMarkers.size === 1) {
             this.showMarkerProperties();
-            document.getElementById('markerTitle').focus();
+            const titleInput = document.getElementById('markerTitle');
+            if (titleInput) {
+                titleInput.focus();
+                titleInput.select();
+            }
         }
     }
 
     changeMarkerColor() {
         const newColor = prompt('Enter new color (hex format):', '#6366f1');
-        if (newColor) {
+        if (newColor && /^#[0-9A-F]{6}$/i.test(newColor)) {
             this.saveState();
-            this.selectedMarkers.forEach(markerId => {
-                const marker = this.markers.find(m => m.id === markerId);
-                if (marker) {
-                    marker.color = newColor;
-                    this.renderMarker(marker);
-                }
-            });
-            this.updateMarkerList();
+            this.updateSelectedMarkersColor(newColor);
+        } else if (newColor) {
+            this.showStatus('Invalid color format. Please use hex format (#RRGGBB).', 'error');
+        }
+    }
+
+    changeBulkMarkerColor() {
+        const newColor = prompt('Enter new color for all selected markers (hex format):', '#6366f1');
+        if (newColor && /^#[0-9A-F]{6}$/i.test(newColor)) {
+            this.saveState();
+            this.updateSelectedMarkersColor(newColor);
+        } else if (newColor) {
+            this.showStatus('Invalid color format. Please use hex format (#RRGGBB).', 'error');
         }
     }
 
@@ -1430,24 +1738,27 @@ class EnhancedImageMarkerEditor {
         return `
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
-            font-family: Arial, sans-serif; 
-            background: #f0f0f0; 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; 
+            background: #1a1a1a; 
             display: flex; 
             justify-content: center; 
             align-items: center; 
             min-height: 100vh; 
             padding: 20px;
+            color: #333;
         }
         .viewer-container {
             background: white;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
             overflow: hidden;
             max-width: 90vw;
+            max-height: 90vh;
         }
         .image-container {
             position: relative;
             display: inline-block;
+            background: #f8f9fa;
         }
         #mainImage {
             max-width: 100%;
@@ -1473,6 +1784,7 @@ class EnhancedImageMarkerEditor {
         }
         .marker:hover {
             transform: translate(-50%, -50%) scale(1.4);
+            z-index: 100;
         }
         .marker.info::after { content: 'i'; font-size: 10px; }
         .marker.link::after { content: '🔗'; font-size: 8px; }
@@ -1493,12 +1805,13 @@ class EnhancedImageMarkerEditor {
         .popup-content {
             background: white;
             padding: 30px;
-            border-radius: 10px;
+            border-radius: 12px;
             max-width: 500px;
             width: 90%;
             max-height: 80vh;
             overflow-y: auto;
             position: relative;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
         }
         .close-btn {
             position: absolute;
@@ -1509,13 +1822,22 @@ class EnhancedImageMarkerEditor {
             font-size: 24px;
             cursor: pointer;
             color: #666;
+            padding: 5px;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         .close-btn:hover {
+            background: #f0f0f0;
             color: #000;
         }
         .popup h3 {
             margin-bottom: 10px;
             color: #333;
+            font-size: 1.5em;
         }
         .popup p {
             margin-bottom: 15px;
@@ -1525,14 +1847,15 @@ class EnhancedImageMarkerEditor {
         .popup a {
             display: inline-block;
             padding: 10px 20px;
-            background: #007bff;
+            background: #6366f1;
             color: white;
             text-decoration: none;
-            border-radius: 5px;
+            border-radius: 6px;
             margin-right: 10px;
+            transition: background 0.3s ease;
         }
         .popup a:hover {
-            background: #0056b3;
+            background: #4f46e5;
         }
         audio, video {
             width: 100%;
@@ -1542,6 +1865,14 @@ class EnhancedImageMarkerEditor {
         iframe {
             border-radius: 8px;
             border: none;
+        }
+        @media (max-width: 768px) {
+            .viewer-container {
+                max-width: 95vw;
+            }
+            .popup-content {
+                padding: 20px;
+            }
         }`;
     }
 
@@ -1551,56 +1882,67 @@ class EnhancedImageMarkerEditor {
             getEmbedCode: function(url, type) {
                 if (!url) return '';
                 
-                const cleanUrl = this.cleanUrl(url);
-                
-                if (cleanUrl.includes('youtube.com') || cleanUrl.includes('youtu.be')) {
-                    const videoId = this.extractYouTubeId(cleanUrl);
-                    if (videoId) {
-                        return '<iframe width="100%" height="315" src="https://www.youtube.com/embed/' + videoId + '?rel=0&modestbranding=1" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>';
+                try {
+                    const cleanUrl = this.cleanUrl(url);
+                    
+                    // YouTube
+                    if (cleanUrl.includes('youtube.com') || cleanUrl.includes('youtu.be')) {
+                        const videoId = this.extractYouTubeId(cleanUrl);
+                        if (videoId) {
+                            return '<iframe width="100%" height="315" src="https://www.youtube.com/embed/' + videoId + '?rel=0&modestbranding=1" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>';
+                        }
                     }
-                }
-                
-                if (cleanUrl.includes('vimeo.com')) {
-                    const videoId = this.extractVimeoId(cleanUrl);
-                    if (videoId) {
-                        return '<iframe src="https://player.vimeo.com/video/' + videoId + '?title=0&byline=0&portrait=0" width="100%" height="315" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>';
+                    
+                    // Vimeo
+                    if (cleanUrl.includes('vimeo.com')) {
+                        const videoId = this.extractVimeoId(cleanUrl);
+                        if (videoId) {
+                            return '<iframe src="https://player.vimeo.com/video/' + videoId + '?title=0&byline=0&portrait=0" width="100%" height="315" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>';
+                        }
                     }
-                }
-                
-                if (cleanUrl.includes('soundcloud.com') || cleanUrl.includes('on.soundcloud.com')) {
-                    if (cleanUrl.includes('on.soundcloud.com')) {
-                        return '<div style="background: #f8fafc; padding: 20px; border-radius: 8px; text-align: center; margin: 10px 0;">' +
-                               '<p style="margin-bottom: 15px; color: #666;">🎵 SoundCloud Audio</p>' +
-                               '<a href="' + url + '" target="_blank" style="display: inline-block; padding: 12px 24px; background: #ff5500; color: white; text-decoration: none; border-radius: 6px; font-weight: bold;">' +
-                               'Listen on SoundCloud</a>' +
-                               '</div>';
+                    
+                    // SoundCloud
+                    if (cleanUrl.includes('soundcloud.com') || cleanUrl.includes('on.soundcloud.com')) {
+                        if (cleanUrl.includes('on.soundcloud.com')) {
+                            return '<div style="background: #f8fafc; padding: 20px; border-radius: 8px; text-align: center; margin: 10px 0;">' +
+                                   '<p style="margin-bottom: 15px; color: #666;">🎵 SoundCloud Audio</p>' +
+                                   '<a href="' + url + '" target="_blank" rel="noopener" style="display: inline-block; padding: 12px 24px; background: #ff5500; color: white; text-decoration: none; border-radius: 6px; font-weight: bold;">' +
+                                   'Listen on SoundCloud</a>' +
+                                   '</div>';
+                        }
+                        return '<iframe width="100%" height="166" scrolling="no" frameborder="no" allow="autoplay" src="https://w.soundcloud.com/player/?url=' + encodeURIComponent(cleanUrl) + '&color=%23ff5500&auto_play=false&hide_related=false&show_comments=true&show_user=true&show_reposts=false&show_teaser=true&visual=true"></iframe>';
                     }
-                    return '<iframe width="100%" height="166" scrolling="no" frameborder="no" allow="autoplay" src="https://w.soundcloud.com/player/?url=' + encodeURIComponent(cleanUrl) + '&color=%23ff5500&auto_play=false&hide_related=false&show_comments=true&show_user=true&show_reposts=false&show_teaser=true&visual=true"></iframe>';
+                    
+                    // Audio files
+                    if (cleanUrl.match(/\\.(mp3|wav|ogg|m4a|aac)(\\\\?.*)?$/i)) {
+                        return '<audio controls style="width: 100%"><source src="' + cleanUrl + '">Your browser does not support audio.</audio>';
+                    }
+                    
+                    // Video files
+                    if (cleanUrl.match(/\\.(mp4|webm|ogg|mov|avi)(\\\\?.*)?$/i)) {
+                        return '<video controls style="width: 100%; max-width: 100%"><source src="' + cleanUrl + '">Your browser does not support video.</video>';
+                    }
+                    
+                    // Default external link
+                    return '<a href="' + cleanUrl + '" target="_blank" rel="noopener" style="display: inline-block; padding: 10px 20px; background: #6366f1; color: white; text-decoration: none; border-radius: 4px;">Open Link</a>';
+                } catch (error) {
+                    console.error('Error generating embed code:', error);
+                    return '<div style="color: #ef4444; padding: 10px; background: #fef2f2; border-radius: 4px;">Error loading media</div>';
                 }
-                
-                if (cleanUrl.match(/\\.(mp3|wav|ogg|m4a|aac)(\\?.*)?$/i)) {
-                    return '<audio controls style="width: 100%"><source src="' + cleanUrl + '">Your browser does not support audio.</audio>';
-                }
-                
-                if (cleanUrl.match(/\\.(mp4|webm|ogg|mov|avi)(\\?.*)?$/i)) {
-                    return '<video controls style="width: 100%; max-width: 100%"><source src="' + cleanUrl + '">Your browser does not support video.</video>';
-                }
-                
-                return '<a href="' + cleanUrl + '" target="_blank" style="display: inline-block; padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 4px;">Open Link</a>';
             },
             
             cleanUrl: function(url) {
                 return url
-                    .replace(/\\?si=[^&]+/, '')
-                    .replace(/\\?feature=share/, '')
-                    .replace(/\\?utm_[^&]+/g, '')
+                    .replace(/\\\\?si=[^&]+/, '')
+                    .replace(/\\\\?feature=share/, '')
+                    .replace(/\\\\?utm_[^&]+/g, '')
                     .split('?')[0];
             },
             
             extractYouTubeId: function(url) {
                 const patterns = [
-                    /(?:https?:\\/\\/)?(?:www\\.)?(?:youtube\\.com\\/watch\\?v=|youtu\\.be\\/)([^&\\n?#]+)/,
-                    /(?:https?:\\/\\/)?(?:www\\.)?youtube\\.com\\/embed\\/([^&\\n?#]+)/
+                    /(?:https?:\\\\/\\\\/)?(?:www\\\\.)?(?:youtube\\\\.com\\\\/watch\\\\?v=|youtu\\\\.be\\\\/)([^&\\\\n?#]+)/,
+                    /(?:https?:\\\\/\\\\/)?(?:www\\\\.)?youtube\\\\.com\\\\/embed\\\\/([^&\\\\n?#]+)/
                 ];
                 
                 for (const pattern of patterns) {
@@ -1613,7 +1955,7 @@ class EnhancedImageMarkerEditor {
             },
             
             extractVimeoId: function(url) {
-                const match = url.match(/(?:https?:\\/\\/)?(?:www\\.)?vimeo\\.com\\/([0-9]+)/);
+                const match = url.match(/(?:https?:\\\\/\\\\/)?(?:www\\\\.)?vimeo\\\\.com\\\\/([0-9]+)/);
                 return match ? match[1] : null;
             }
         };
@@ -1622,6 +1964,7 @@ class EnhancedImageMarkerEditor {
             document.getElementById('popup').style.display = 'none';
         }
 
+        // Marker click handlers
         document.querySelectorAll('.marker').forEach(marker => {
             marker.addEventListener('click', function(e) {
                 e.stopPropagation();
@@ -1653,21 +1996,48 @@ class EnhancedImageMarkerEditor {
             document.getElementById('popup').style.display = 'flex';
         }
 
+        // Close popup when clicking outside
         document.getElementById('popup').addEventListener('click', function(e) {
             if (e.target === this) {
                 closePopup();
             }
         });
 
+        // Keyboard controls
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
                 closePopup();
             }
         });
+
+        // Handle marker hover effects
+        document.querySelectorAll('.marker').forEach(marker => {
+            marker.addEventListener('mouseenter', function() {
+                this.style.zIndex = '100';
+            });
+            
+            marker.addEventListener('mouseleave', function() {
+                if (!this.classList.contains('selected')) {
+                    this.style.zIndex = '10';
+                }
+            });
+        });
     `;
     }
 }
 
+// Initialize editor when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    new EnhancedImageMarkerEditor();
+    try {
+        new EnhancedImageMarkerEditor();
+    } catch (error) {
+        console.error('Failed to initialize editor:', error);
+        // Show error to user
+        const statusEl = document.getElementById('status');
+        if (statusEl) {
+            statusEl.textContent = 'Error initializing editor. Please refresh the page.';
+            statusEl.className = 'status error';
+            statusEl.style.display = 'block';
+        }
+    }
 });
