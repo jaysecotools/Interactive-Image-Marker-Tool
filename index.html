@@ -17,16 +17,15 @@
                 <select id="markerType">
                     <option value="info">📋 Info Marker</option>
                     <option value="link">🔗 Link Marker</option>
-                    <option value="audio">🎵 Audio Marker (MP3, WAV, SoundCloud)</option>
-                    <option value="video">🎬 Video Marker (MP4, YouTube, Vimeo)</option>
+                    <option value="audio">🎵 Audio Marker</option>
+                    <option value="video">🎬 Video Marker</option>
                 </select>
                 <input type="color" id="markerColor" value="#6366f1" title="Marker Color">
                 <div class="opacity-control">
                     <label for="markerOpacity">Opacity:</label>
                     <input type="range" id="markerOpacity" min="0.1" max="1" step="0.1" value="0.8">
                 </div>
-                <!-- Added VR Mode Toggle -->
-                <button id="vrModeBtn" class="vr-toggle">
+                <button id="vrModeBtn">
                     <span class="material-icons">view_in_ar</span>
                     2D Mode
                 </button>
@@ -69,6 +68,7 @@
                         <small>Click anywhere on the image to place markers</small>
                     </div>
                     <img id="mainImage" style="display: none;">
+                    <div class="image-type-indicator" id="imageTypeIndicator"></div>
                 </div>
             </div>
 
@@ -84,7 +84,7 @@
                 </div>
                 <div class="property-group" id="linkUrlGroup" style="display: none;">
                     <label>URL:</label>
-                    <input type="url" id="markerUrl" placeholder="https://example.com or media service URL">
+                    <input type="url" id="markerUrl" placeholder="https://example.com">
                     <div class="url-preview" id="linkPreview" style="display: none;"></div>
                 </div>
                 <div class="property-group" id="mediaUrlGroup" style="display: none;">
@@ -114,6 +114,27 @@
                         Delete Marker
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Options Modal -->
+    <div id="exportModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h3>Export Options</h3>
+            <div class="export-options">
+                <div class="export-option" data-type="2d">
+                    <h4>📱 2D HTML Export</h4>
+                    <p>Standard web page with interactive markers</p>
+                </div>
+                <div class="export-option" data-type="vr">
+                    <h4>🥽 VR 360° Export</h4>
+                    <p>Immersive 360° experience with WebXR support</p>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button id="confirmExport" class="btn-primary">Export</button>
+                <button id="cancelExport" class="btn-danger">Cancel</button>
             </div>
         </div>
     </div>
