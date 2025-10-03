@@ -121,20 +121,26 @@
     <!-- Export Options Modal -->
     <div id="exportModal" class="modal" style="display: none;">
         <div class="modal-content">
-            <h3>Export Options</h3>
+            <h3>🎯 Export Options</h3>
             <div class="export-options">
                 <div class="export-option" data-type="2d">
                     <h4>📱 2D HTML Export</h4>
-                    <p>Standard web page with interactive markers</p>
+                    <p>Standard web page with interactive markers on flat image</p>
                 </div>
                 <div class="export-option" data-type="vr">
                     <h4>🥽 VR 360° Export</h4>
-                    <p>Immersive 360° experience with WebXR support</p>
+                    <p>Immersive 360° experience with WebXR support for VR headsets</p>
                 </div>
             </div>
             <div class="modal-actions">
-                <button id="confirmExport" class="btn-primary">Export</button>
-                <button id="cancelExport" class="btn-danger">Cancel</button>
+                <button id="confirmExport" class="btn-primary">
+                    <span class="material-icons">download</span>
+                    Export
+                </button>
+                <button id="cancelExport" class="btn-danger">
+                    <span class="material-icons">close</span>
+                    Cancel
+                </button>
             </div>
         </div>
     </div>
