@@ -1,74 +1,40 @@
 class HTMLExporter {
     static download(htmlContent, filename) {
-        console.log('Starting download process...');
+        console.log('Starting nuclear download...');
         
-        if (!htmlContent || !filename) {
-            console.error('Invalid parameters for download');
-            return false;
-        }
-
+        // NUCLEAR OPTION - Base64 data URL
+        const base64Content = btoa(unescape(encodeURIComponent(htmlContent)));
+        const dataUrl = 'data:text/html;base64,' + base64Content;
+        
+        // Create download link
+        const link = document.createElement('a');
+        link.href = dataUrl;
+        link.download = filename;
+        
+        // Append to body and click
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        console.log('Download triggered for:', filename);
+    }
+    
+    // Alternative method - test if nuclear option fails
+    static downloadBlob(htmlContent, filename) {
         try {
-            const blob = new Blob([htmlContent], { 
-                type: 'text/html;charset=utf-8' 
-            });
-            
+            const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
             link.download = filename;
-            link.style.display = 'none';
-            
             document.body.appendChild(link);
             link.click();
-            
-            setTimeout(() => {
-                if (document.body.contains(link)) {
-                    document.body.removeChild(link);
-                }
-                URL.revokeObjectURL(url);
-            }, 1000);
-            
-            console.log('Download initiated successfully');
-            return true;
-            
+            document.body.removeChild(link);
+            setTimeout(() => URL.revokeObjectURL(url), 100);
         } catch (error) {
-            console.error('Download failed:', error);
-            
-            try {
-                const dataUrl = 'data:text/html;charset=utf-8,' + encodeURIComponent(htmlContent);
-                const link = document.createElement('a');
-                link.href = dataUrl;
-                link.download = filename;
-                link.style.display = 'none';
-                
-                document.body.appendChild(link);
-                link.click();
-                
-                setTimeout(() => {
-                    if (document.body.contains(link)) {
-                        document.body.removeChild(link);
-                    }
-                }, 100);
-                
-                return true;
-                
-            } catch (fallbackError) {
-                console.error('Fallback download failed:', fallbackError);
-                
-                const newWindow = window.open('', '_blank');
-                if (newWindow) {
-                    newWindow.document.write(htmlContent);
-                    newWindow.document.close();
-                    
-                    setTimeout(() => {
-                        alert('The file has been opened in a new tab. Please use "File > Save As" to save it as an HTML file.');
-                    }, 100);
-                    
-                    return false;
-                }
-                
-                return false;
-            }
+            console.error('Blob download failed:', error);
+            // Fallback to nuclear option
+            this.download(htmlContent, filename);
         }
     }
 }
