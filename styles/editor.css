@@ -448,6 +448,46 @@ header h1 {
     border-radius: 4px;
 }
 
+/* Enhanced Media Preview Styles */
+.media-preview iframe,
+.media-preview audio,
+.media-preview video {
+    border-radius: 8px;
+    background: #000;
+}
+
+.media-preview iframe {
+    border: none;
+    min-height: 200px;
+}
+
+.url-help {
+    background: #f8fafc;
+    padding: 8px 12px;
+    border-radius: 6px;
+    border-left: 3px solid var(--primary-color);
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 8px;
+    line-height: 1.4;
+}
+
+.url-help strong {
+    color: var(--text-primary);
+}
+
+/* Enhanced popup media styles in exported HTML */
+.popup-content iframe {
+    border-radius: 8px;
+    background: #000;
+}
+
+.popup-content audio,
+.popup-content video {
+    border-radius: 8px;
+    margin: 10px 0;
+}
+
 /* Status Messages */
 .status {
     margin-top: 16px;
