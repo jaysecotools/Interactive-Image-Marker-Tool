@@ -329,6 +329,19 @@ class EnhancedImageMarkerEditor {
             this.hideExportModal();
         });
 
+        // Bulk actions
+        safeAddEventListener('bulkDelete', 'click', () => {
+            this.deleteSelectedMarkers();
+        });
+
+        safeAddEventListener('bulkColor', 'click', () => {
+            this.changeBulkMarkerColor();
+        });
+
+        safeAddEventListener('bulkClear', 'click', () => {
+            this.clearSelection();
+        });
+
         // Container events
         if (this.container) {
             this.container.addEventListener('click', (e) => {
@@ -361,19 +374,6 @@ class EnhancedImageMarkerEditor {
                 }
             });
         }
-
-        // Bulk actions
-        safeAddEventListener('bulkDelete', 'click', () => {
-            this.deleteSelectedMarkers();
-        });
-
-        safeAddEventListener('bulkColor', 'click', () => {
-            this.changeBulkMarkerColor();
-        });
-
-        safeAddEventListener('bulkClear', 'click', () => {
-            this.clearSelection();
-        });
     }
 
     setupKeyboardShortcuts() {
@@ -431,21 +431,20 @@ class EnhancedImageMarkerEditor {
         this.isVRMode = !this.isVRMode;
         const vrButton = document.getElementById('vrModeBtn');
         
-        if (this.isVRMode) {
-            if (vrButton) {
+        if (vrButton) {
+            if (this.isVRMode) {
                 vrButton.innerHTML = '<span class="material-icons">view_in_ar</span> VR Mode';
                 vrButton.classList.add('vr-active');
-            }
-            this.showStatus('VR Mode: Markers will be placed in 3D space for 360° viewing', 'success');
-            this.checkIf360Image();
-        } else {
-            if (vrButton) {
+                this.showStatus('VR Mode: Markers will be placed in 3D space for 360° viewing', 'success');
+            } else {
                 vrButton.innerHTML = '<span class="material-icons">view_in_ar</span> 2D Mode';
                 vrButton.classList.remove('vr-active');
+                this.showStatus('2D Mode: Standard flat image markup', 'success');
             }
-            this.showStatus('2D Mode: Standard flat image markup', 'success');
         }
-
+        
+        this.checkIf360Image();
+        
         // Update all markers to reflect VR mode
         this.markers.forEach(marker => {
             marker.is3D = this.isVRMode;
@@ -897,6 +896,7 @@ class EnhancedImageMarkerEditor {
     }
 
     escapeHtml(unsafe) {
+        if (!unsafe) return '';
         return unsafe
             .replace(/&/g, "&amp;")
             .replace(/</g, "&lt;")
@@ -966,6 +966,8 @@ class EnhancedImageMarkerEditor {
 
         if (exportType === 'vr') {
             this.exportVRProject();
+        } else if (exportType === 'json') {
+            this.exportJSONProject();
         } else {
             this.export2DProject();
         }
@@ -994,6 +996,17 @@ class EnhancedImageMarkerEditor {
         } catch (error) {
             console.error('VR Export error:', error);
             this.showStatus('Error during VR export: ' + error.message, 'error');
+        }
+    }
+
+    exportJSONProject() {
+        try {
+            const projectData = this.getProjectData();
+            HTMLExporter.exportJSON(projectData, 'interactive-image-project.json');
+            this.showStatus('Project backup saved as JSON!', 'success');
+        } catch (error) {
+            console.error('JSON Export error:', error);
+            this.showStatus('Error during JSON export: ' + error.message, 'error');
         }
     }
 
@@ -1693,11 +1706,11 @@ class EnhancedImageMarkerEditor {
             case 'edit':
                 this.editMarkerProperties();
                 break;
-            case 'delete':
-                this.deleteSelectedMarkers();
-                break;
             case 'color':
                 this.changeMarkerColor();
+                break;
+            case 'delete':
+                this.deleteSelectedMarkers();
                 break;
         }
         this.hideContextMenu();
