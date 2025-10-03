@@ -1,3 +1,153 @@
+class MediaURLHandler {
+    static getMediaType(url) {
+        if (!url) return null;
+
+        // YouTube patterns
+        const youtubePatterns = [
+            /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/,
+            /(?:https?:\/\/)?(?:www\.)?youtube\.com\/embed\/([^&\n?#]+)/,
+            /(?:https?:\/\/)?(?:www\.)?youtube\.com\/v\/([^&\n?#]+)/
+        ];
+
+        // Vimeo patterns
+        const vimeoPatterns = [
+            /(?:https?:\/\/)?(?:www\.)?vimeo\.com\/([0-9]+)/,
+            /(?:https?:\/\/)?(?:www\.)?vimeo\.com\/groups\/[^\/]+\/videos\/([0-9]+)/,
+            /(?:https?:\/\/)?(?:www\.)?vimeo\.com\/channels\/[^\/]+\/([0-9]+)/
+        ];
+
+        // SoundCloud patterns
+        const soundcloudPatterns = [
+            /(?:https?:\/\/)?(?:www\.)?soundcloud\.com\/[^\/]+\/[^\/]+/
+        ];
+
+        // Direct file extensions
+        const audioExtensions = ['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac'];
+        const videoExtensions = ['mp4', 'webm', 'ogg', 'mov', 'avi', 'mkv', 'm4v'];
+
+        const urlLower = url.toLowerCase();
+        
+        // Check YouTube
+        for (const pattern of youtubePatterns) {
+            if (pattern.test(url)) {
+                return { type: 'youtube', embedUrl: this.getYouTubeEmbedUrl(url) };
+            }
+        }
+
+        // Check Vimeo
+        for (const pattern of vimeoPatterns) {
+            if (pattern.test(url)) {
+                return { type: 'vimeo', embedUrl: this.getVimeoEmbedUrl(url) };
+            }
+        }
+
+        // Check SoundCloud
+        for (const pattern of soundcloudPatterns) {
+            if (pattern.test(url)) {
+                return { type: 'soundcloud', embedUrl: this.getSoundCloudEmbedUrl(url) };
+            }
+        }
+
+        // Check direct file links
+        const extension = urlLower.split('.').pop().split('?')[0];
+        if (audioExtensions.includes(extension)) {
+            return { type: 'audio', embedUrl: url };
+        }
+        if (videoExtensions.includes(extension)) {
+            return { type: 'video', embedUrl: url };
+        }
+
+        return { type: 'unknown', embedUrl: url };
+    }
+
+    static getYouTubeEmbedUrl(url) {
+        const patterns = [
+            /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/,
+            /(?:https?:\/\/)?(?:www\.)?youtube\.com\/embed\/([^&\n?#]+)/,
+            /(?:https?:\/\/)?(?:www\.)?youtube\.com\/v\/([^&\n?#]+)/
+        ];
+
+        for (const pattern of patterns) {
+            const match = url.match(pattern);
+            if (match && match[1]) {
+                const videoId = match[1].split('?')[0];
+                return `https://www.youtube.com/embed/${videoId}`;
+            }
+        }
+        return url;
+    }
+
+    static getVimeoEmbedUrl(url) {
+        const patterns = [
+            /(?:https?:\/\/)?(?:www\.)?vimeo\.com\/([0-9]+)/,
+            /(?:https?:\/\/)?(?:www\.)?vimeo\.com\/groups\/[^\/]+\/videos\/([0-9]+)/,
+            /(?:https?:\/\/)?(?:www\.)?vimeo\.com\/channels\/[^\/]+\/([0-9]+)/
+        ];
+
+        for (const pattern of patterns) {
+            const match = url.match(pattern);
+            if (match && match[1]) {
+                const videoId = match[1];
+                return `https://player.vimeo.com/video/${videoId}`;
+            }
+        }
+        return url;
+    }
+
+    static getSoundCloudEmbedUrl(url) {
+        // SoundCloud requires a different approach - we'll use their oEmbed API
+        // For now, return the original URL and handle embedding differently
+        return url;
+    }
+
+    static generateEmbedCode(mediaInfo, width = '100%', height = '300') {
+        const { type, embedUrl } = mediaInfo;
+
+        switch (type) {
+            case 'youtube':
+            case 'vimeo':
+                return `<iframe 
+                    src="${embedUrl}" 
+                    width="${width}" 
+                    height="${height}" 
+                    frameborder="0" 
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                    allowfullscreen>
+                </iframe>`;
+            
+            case 'soundcloud':
+                return `<iframe 
+                    width="${width}" 
+                    height="${height}" 
+                    scrolling="no" 
+                    frameborder="no" 
+                    allow="autoplay"
+                    src="https://w.soundcloud.com/player/?url=${encodeURIComponent(embedUrl)}&color=%23ff5500&auto_play=false&hide_related=false&show_comments=true&show_user=true&show_reposts=false&show_teaser=true&visual=true">
+                </iframe>`;
+            
+            case 'audio':
+                return `<audio controls style="width: 100%;">
+                    <source src="${embedUrl}" type="audio/mpeg">
+                    Your browser does not support the audio element.
+                </audio>`;
+            
+            case 'video':
+                return `<video controls style="width: 100%; max-width: 100%;">
+                    <source src="${embedUrl}" type="video/mp4">
+                    Your browser does not support the video element.
+                </video>`;
+            
+            default:
+                return `<a href="${embedUrl}" target="_blank">${embedUrl}</a>`;
+        }
+    }
+
+    static isValidMediaUrl(url) {
+        const mediaInfo = this.getMediaType(url);
+        return mediaInfo.type !== 'unknown';
+    }
+}
+
 class EnhancedImageMarkerEditor {
     constructor() {
         this.image = document.getElementById('mainImage');
@@ -13,6 +163,7 @@ class EnhancedImageMarkerEditor {
         this.initializeEventListeners();
         this.showStatus('Ready to upload image and add markers', 'success');
         this.setupKeyboardShortcuts();
+        this.setupMediaUrlHelpers();
         
         this.currentMarkerColor = document.getElementById('markerColor').value;
         this.currentMarkerOpacity = parseFloat(document.getElementById('markerOpacity').value);
@@ -134,6 +285,15 @@ class EnhancedImageMarkerEditor {
                 this.clearSelection();
             }
         });
+    }
+
+    setupMediaUrlHelpers() {
+        const mediaUrlInput = document.getElementById('markerMediaUrl');
+        const linkUrlInput = document.getElementById('markerUrl');
+        
+        // Add placeholder examples
+        mediaUrlInput.placeholder = "YouTube, Vimeo, SoundCloud, or direct MP4/MP3 links...";
+        linkUrlInput.placeholder = "https://example.com or media service URL";
     }
 
     handleImageUpload(file) {
@@ -324,6 +484,14 @@ class EnhancedImageMarkerEditor {
         document.getElementById('markerCustomOpacity').value = marker.opacity || 0.8;
 
         this.togglePropertyFields(marker.type);
+        
+        // Show previews if URLs exist
+        if (marker.url) {
+            this.validateAndPreviewUrl(marker.url, 'link');
+        }
+        if (marker.mediaUrl) {
+            this.validateAndPreviewUrl(marker.mediaUrl, 'media');
+        }
     }
 
     hideMarkerProperties() {
@@ -450,38 +618,70 @@ class EnhancedImageMarkerEditor {
     validateAndPreviewUrl(url, type) {
         if (!url) {
             this.hidePreview(type);
-            return;
+            return false;
         }
 
         try {
+            // Basic URL validation
             new URL(url);
-            this.showPreview(url, type);
+            
+            const mediaInfo = MediaURLHandler.getMediaType(url);
+            
+            if (type === 'link') {
+                this.showLinkPreview(url, mediaInfo);
+            } else if (type === 'media') {
+                this.showMediaPreview(url, mediaInfo);
+            }
+            
+            return true;
         } catch (e) {
             this.showStatus('Invalid URL format', 'warning');
             this.hidePreview(type);
+            return false;
         }
     }
 
-    showPreview(url, type) {
-        if (type === 'link') {
-            const preview = document.getElementById('linkPreview');
-            preview.innerHTML = `Link: <a href="${url}" target="_blank">${url}</a>`;
-            preview.style.display = 'block';
-        } else if (type === 'media') {
-            const preview = document.getElementById('mediaPreview');
-            const extension = url.split('.').pop().toLowerCase();
-            const audioExtensions = ['mp3', 'wav', 'ogg', 'm4a'];
-            const videoExtensions = ['mp4', 'webm', 'ogg', 'mov'];
-
-            if (audioExtensions.includes(extension)) {
-                preview.innerHTML = `<audio controls src="${url}">Your browser does not support audio.</audio>`;
-            } else if (videoExtensions.includes(extension)) {
-                preview.innerHTML = `<video controls src="${url}" style="max-width: 100%;">Your browser does not support video.</video>`;
-            } else {
-                preview.innerHTML = 'Unsupported media format';
-            }
-            preview.style.display = 'block';
+    showLinkPreview(url, mediaInfo) {
+        const preview = document.getElementById('linkPreview');
+        
+        if (mediaInfo.type !== 'unknown') {
+            preview.innerHTML = `🔗 ${mediaInfo.type.toUpperCase()} Link: <a href="${url}" target="_blank">${url}</a>`;
+        } else {
+            preview.innerHTML = `🔗 External Link: <a href="${url}" target="_blank">${url}</a>`;
         }
+        preview.style.display = 'block';
+    }
+
+    showMediaPreview(url, mediaInfo) {
+        const preview = document.getElementById('mediaPreview');
+        
+        if (mediaInfo.type === 'unknown') {
+            preview.innerHTML = '❌ Unsupported media format or URL';
+            preview.style.display = 'block';
+            return;
+        }
+
+        // Show media type indicator
+        const typeLabels = {
+            youtube: '📹 YouTube Video',
+            vimeo: '🎬 Vimeo Video',
+            soundcloud: '🎵 SoundCloud Audio',
+            audio: '🔊 Audio File',
+            video: '🎥 Video File'
+        };
+
+        const typeLabel = typeLabels[mediaInfo.type] || '📌 Media';
+        
+        preview.innerHTML = `
+            <div style="margin-bottom: 8px; font-weight: 500; color: var(--text-primary);">
+                ${typeLabel}
+            </div>
+            ${MediaURLHandler.generateEmbedCode(mediaInfo, '100%', '200')}
+            <div style="margin-top: 8px; font-size: 12px; color: var(--text-secondary);">
+                Source: <a href="${url}" target="_blank">${url}</a>
+            </div>
+        `;
+        preview.style.display = 'block';
     }
 
     hidePreview(type) {
@@ -705,14 +905,20 @@ class EnhancedImageMarkerEditor {
     }
 
     generateStandaloneHTML(projectData) {
-        const markersHTML = projectData.markers.map(marker => 
-            `<div class="marker ${marker.type}" 
+        const markersHTML = projectData.markers.map(marker => {
+            let markerData = marker;
+            // Ensure mediaType is included for backward compatibility
+            if (marker.mediaUrl && !marker.mediaType) {
+                const mediaInfo = MediaURLHandler.getMediaType(marker.mediaUrl);
+                markerData = { ...marker, mediaType: mediaInfo.type };
+            }
+            return `<div class="marker ${marker.type}" 
                  style="left: ${marker.x}%; top: ${marker.y}%; 
                         background-color: ${marker.color || this.getDefaultColor(marker.type)};
                         opacity: ${marker.opacity || 0.8};"
-                 data-marker='${JSON.stringify(marker).replace(/'/g, "&apos;")}'>
-             </div>`
-        ).join('');
+                 data-marker='${JSON.stringify(markerData).replace(/'/g, "&apos;")}'>
+             </div>`;
+        }).join('');
 
         return `<!DOCTYPE html>
 <html lang="en">
@@ -743,6 +949,85 @@ class EnhancedImageMarkerEditor {
     </div>
 
     <script>
+        ${this.getEnhancedMediaScript()}
+    </script>
+</body>
+</html>`;
+    }
+
+    getEnhancedMediaScript() {
+        return `
+        const MediaHandler = {
+            getEmbedCode: function(url, type) {
+                if (!url) return '';
+                
+                // YouTube
+                if (url.includes('youtube.com') || url.includes('youtu.be')) {
+                    const videoId = this.extractYouTubeId(url);
+                    if (videoId) {
+                        return '<iframe width="100%" height="315" src="https://www.youtube.com/embed/' + videoId + '" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>';
+                    }
+                }
+                
+                // Vimeo
+                if (url.includes('vimeo.com')) {
+                    const videoId = this.extractVimeoId(url);
+                    if (videoId) {
+                        return '<iframe src="https://player.vimeo.com/video/' + videoId + '" width="100%" height="315" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>';
+                    }
+                }
+                
+                // SoundCloud
+                if (url.includes('soundcloud.com')) {
+                    return '<iframe width="100%" height="166" scrolling="no" frameborder="no" allow="autoplay" src="https://w.soundcloud.com/player/?url=' + encodeURIComponent(url) + '&color=%23ff5500&auto_play=false&hide_related=false&show_comments=true&show_user=true&show_reposts=false&show_teaser=true"></iframe>';
+                }
+                
+                // Audio files
+                if (url.match(/\\.(mp3|wav|ogg|m4a|aac)(\\?.*)?$/i)) {
+                    return '<audio controls style="width: 100%"><source src="' + url + '">Your browser does not support audio.</audio>';
+                }
+                
+                // Video files
+                if (url.match(/\\.(mp4|webm|ogg|mov|avi)(\\?.*)?$/i)) {
+                    return '<video controls style="width: 100%; max-width: 100%"><source src="' + url + '">Your browser does not support video.</video>';
+                }
+                
+                return '<a href="' + url + '" target="_blank">' + url + '</a>';
+            },
+            
+            extractYouTubeId: function(url) {
+                const patterns = [
+                    /(?:https?:\\/\\/)?(?:www\\.)?(?:youtube\\.com\\/watch\\?v=|youtu\\.be\\/)([^&\\n?#]+)/,
+                    /(?:https?:\\/\\/)?(?:www\\.)?youtube\\.com\\/embed\\/([^&\\n?#]+)/,
+                    /(?:https?:\\/\\/)?(?:www\\.)?youtube\\.com\\/v\\/([^&\\n?#]+)/
+                ];
+                
+                for (const pattern of patterns) {
+                    const match = url.match(pattern);
+                    if (match && match[1]) {
+                        return match[1].split('?')[0];
+                    }
+                }
+                return null;
+            },
+            
+            extractVimeoId: function(url) {
+                const patterns = [
+                    /(?:https?:\\/\\/)?(?:www\\.)?vimeo\\.com\\/([0-9]+)/,
+                    /(?:https?:\\/\\/)?(?:www\\.)?vimeo\\.com\\/groups\\/[^\\/]+\\/videos\\/([0-9]+)/,
+                    /(?:https?:\\/\\/)?(?:www\\.)?vimeo\\.com\\/channels\\/[^\\/]+\\/([0-9]+)/
+                ];
+                
+                for (const pattern of patterns) {
+                    const match = url.match(pattern);
+                    if (match && match[1]) {
+                        return match[1];
+                    }
+                }
+                return null;
+            }
+        };
+
         function closePopup() {
             document.getElementById('popup').style.display = 'none';
         }
@@ -756,12 +1041,14 @@ class EnhancedImageMarkerEditor {
         });
 
         function showMarkerInfo(marker) {
-            document.getElementById('popupTitle').textContent = marker.title;
-            document.getElementById('popupDescription').textContent = marker.description;
+            document.getElementById('popupTitle').textContent = marker.title || 'Marker';
+            document.getElementById('popupDescription').textContent = marker.description || '';
             
             const linkElement = document.getElementById('popupLink');
             if (marker.type === 'link' && marker.url) {
                 linkElement.href = marker.url;
+                linkElement.textContent = marker.url.includes('youtube.com') || marker.url.includes('vimeo.com') || marker.url.includes('soundcloud.com') ? 
+                    'Open Media' : 'Visit Link';
                 linkElement.style.display = 'inline-block';
             } else {
                 linkElement.style.display = 'none';
@@ -771,11 +1058,7 @@ class EnhancedImageMarkerEditor {
             mediaElement.innerHTML = '';
             
             if ((marker.type === 'audio' || marker.type === 'video') && marker.mediaUrl) {
-                if (marker.type === 'audio') {
-                    mediaElement.innerHTML = '<audio controls src="' + marker.mediaUrl + '">Your browser does not support audio.</audio>';
-                } else {
-                    mediaElement.innerHTML = '<video controls src="' + marker.mediaUrl + '">Your browser does not support video.</video>';
-                }
+                mediaElement.innerHTML = MediaHandler.getEmbedCode(marker.mediaUrl, marker.type);
             }
             
             document.getElementById('popup').style.display = 'flex';
@@ -792,9 +1075,7 @@ class EnhancedImageMarkerEditor {
                 closePopup();
             }
         });
-    </script>
-</body>
-</html>`;
+    `;
     }
 
     getEnhancedStyles() {
@@ -908,6 +1189,11 @@ class EnhancedImageMarkerEditor {
         audio, video {
             width: 100%;
             margin-top: 15px;
+            border-radius: 8px;
+        }
+        iframe {
+            border-radius: 8px;
+            border: none;
         }`;
     }
 
