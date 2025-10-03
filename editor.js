@@ -239,7 +239,7 @@ class EnhancedImageMarkerEditor {
         this.dragState = {
             markerId: markerId,
             startX: event.clientX,
-            startY: event.clientY,
+            startY: event.y,
             startMarkerX: marker.x,
             startMarkerY: marker.y
         };
@@ -619,25 +619,11 @@ class EnhancedImageMarkerEditor {
             return;
         }
 
-        if (!this.image.src || this.image.src === '') {
-            this.showStatus('Please upload an image before exporting', 'error');
-            return;
-        }
-
-        try {
-            const projectData = this.getProjectData();
-            const htmlContent = this.generateStandaloneHTML(projectData);
-            
-            const success = HTMLExporter.download(htmlContent, 'interactive-image.html');
-            if (success) {
-                this.showStatus('HTML file downloaded successfully!', 'success');
-            } else {
-                this.showStatus('File prepared - check your browser for download or save the opened page manually', 'warning');
-            }
-        } catch (error) {
-            console.error('Export error:', error);
-            this.showStatus('Error during export: ' + error.message, 'error');
-        }
+        const projectData = this.getProjectData();
+        const htmlContent = this.generateStandaloneHTML(projectData);
+        
+        HTMLExporter.download(htmlContent, 'interactive-image.html');
+        this.showStatus('HTML file downloaded successfully!', 'success');
     }
 
     importProject() {
@@ -711,16 +697,10 @@ class EnhancedImageMarkerEditor {
     }
 
     getProjectData() {
-        let imageSrc = this.image.src;
-        
-        if (imageSrc.startsWith('data:') && imageSrc.length > 500000) {
-            console.warn('Large data URL detected, export file might be very large');
-        }
-        
         return {
-            imageSrc: imageSrc,
+            imageSrc: this.image.src,
             markers: this.markers,
-            version: '2.1'
+            version: '2.0'
         };
     }
 
