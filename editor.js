@@ -2,11 +2,15 @@ class MediaURLHandler {
     static getMediaType(url) {
         if (!url) return null;
 
-        // YouTube patterns
+        // Clean the URL first
+        const cleanUrl = this.cleanUrl(url);
+
+        // YouTube patterns - enhanced to handle more formats
         const youtubePatterns = [
             /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/,
             /(?:https?:\/\/)?(?:www\.)?youtube\.com\/embed\/([^&\n?#]+)/,
-            /(?:https?:\/\/)?(?:www\.)?youtube\.com\/v\/([^&\n?#]+)/
+            /(?:https?:\/\/)?(?:www\.)?youtube\.com\/v\/([^&\n?#]+)/,
+            /(?:https?:\/\/)?(?:www\.)?youtube\.com\/shorts\/([^&\n?#]+)/
         ];
 
         // Vimeo patterns
@@ -16,62 +20,97 @@ class MediaURLHandler {
             /(?:https?:\/\/)?(?:www\.)?vimeo\.com\/channels\/[^\/]+\/([0-9]+)/
         ];
 
-        // SoundCloud patterns
+        // SoundCloud patterns - enhanced
         const soundcloudPatterns = [
-            /(?:https?:\/\/)?(?:www\.)?soundcloud\.com\/[^\/]+\/[^\/]+/
+            /(?:https?:\/\/)?(?:www\.)?soundcloud\.com\/[^\/]+\/[^\/]+/,
+            /(?:https?:\/\/)?(?:www\.)?on\.soundcloud\.com\/[^\/]+/
         ];
 
         // Direct file extensions
         const audioExtensions = ['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac'];
         const videoExtensions = ['mp4', 'webm', 'ogg', 'mov', 'avi', 'mkv', 'm4v'];
 
-        const urlLower = url.toLowerCase();
+        const urlLower = cleanUrl.toLowerCase();
         
         // Check YouTube
         for (const pattern of youtubePatterns) {
-            if (pattern.test(url)) {
-                return { type: 'youtube', embedUrl: this.getYouTubeEmbedUrl(url) };
+            if (pattern.test(cleanUrl)) {
+                return { 
+                    type: 'youtube', 
+                    embedUrl: this.getYouTubeEmbedUrl(cleanUrl),
+                    originalUrl: url
+                };
             }
         }
 
         // Check Vimeo
         for (const pattern of vimeoPatterns) {
-            if (pattern.test(url)) {
-                return { type: 'vimeo', embedUrl: this.getVimeoEmbedUrl(url) };
+            if (pattern.test(cleanUrl)) {
+                return { 
+                    type: 'vimeo', 
+                    embedUrl: this.getVimeoEmbedUrl(cleanUrl),
+                    originalUrl: url
+                };
             }
         }
 
         // Check SoundCloud
         for (const pattern of soundcloudPatterns) {
-            if (pattern.test(url)) {
-                return { type: 'soundcloud', embedUrl: this.getSoundCloudEmbedUrl(url) };
+            if (pattern.test(cleanUrl)) {
+                return { 
+                    type: 'soundcloud', 
+                    embedUrl: this.getSoundCloudEmbedUrl(cleanUrl),
+                    originalUrl: url
+                };
             }
         }
 
         // Check direct file links
         const extension = urlLower.split('.').pop().split('?')[0];
         if (audioExtensions.includes(extension)) {
-            return { type: 'audio', embedUrl: url };
+            return { 
+                type: 'audio', 
+                embedUrl: url,
+                originalUrl: url
+            };
         }
         if (videoExtensions.includes(extension)) {
-            return { type: 'video', embedUrl: url };
+            return { 
+                type: 'video', 
+                embedUrl: url,
+                originalUrl: url
+            };
         }
 
-        return { type: 'unknown', embedUrl: url };
+        return { 
+            type: 'unknown', 
+            embedUrl: url,
+            originalUrl: url
+        };
+    }
+
+    static cleanUrl(url) {
+        // Remove tracking parameters and clean up URL
+        return url
+            .replace(/\?si=[^&]+/, '') // Remove SoundCloud si parameter
+            .replace(/\?feature=share/, '') // Remove share parameters
+            .replace(/\?utm_[^&]+/g, '') // Remove UTM parameters
+            .split('?')[0]; // Remove all query parameters for some services
     }
 
     static getYouTubeEmbedUrl(url) {
         const patterns = [
             /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/,
             /(?:https?:\/\/)?(?:www\.)?youtube\.com\/embed\/([^&\n?#]+)/,
-            /(?:https?:\/\/)?(?:www\.)?youtube\.com\/v\/([^&\n?#]+)/
+            /(?:https?:\/\/)?(?:www\.)?youtube\.com\/v\/([^&\n?#]+)/,
+            /(?:https?:\/\/)?(?:www\.)?youtube\.com\/shorts\/([^&\n?#]+)/
         ];
 
         for (const pattern of patterns) {
             const match = url.match(pattern);
             if (match && match[1]) {
-                const videoId = match[1].split('?')[0];
-                return `https://www.youtube.com/embed/${videoId}`;
+                const videoId = match[1].split('?')[0].split('&')[0];
+                return `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1`;
             }
         }
         return url;
@@ -88,57 +127,88 @@ class MediaURLHandler {
             const match = url.match(pattern);
             if (match && match[1]) {
                 const videoId = match[1];
-                return `https://player.vimeo.com/video/${videoId}`;
+                return `https://player.vimeo.com/video/${videoId}?title=0&byline=0&portrait=0`;
             }
         }
         return url;
     }
 
     static getSoundCloudEmbedUrl(url) {
-        // SoundCloud requires a different approach - we'll use their oEmbed API
-        // For now, return the original URL and handle embedding differently
-        return url;
+        // Handle on.soundcloud.com links - these are share links that need conversion
+        if (url.includes('on.soundcloud.com')) {
+            // For on.soundcloud.com links, we need to use the original URL format
+            // These are preview links and might not always work with embedding
+            // We'll try to use the standard SoundCloud embed pattern
+            return `https://w.soundcloud.com/player/?url=${encodeURIComponent(url)}&color=%23ff5500&auto_play=false&hide_related=false&show_comments=true&show_user=true&show_reposts=false&show_teaser=true&visual=true`;
+        }
+        
+        // For regular SoundCloud URLs
+        return `https://w.soundcloud.com/player/?url=${encodeURIComponent(url)}&color=%23ff5500&auto_play=false&hide_related=false&show_comments=true&show_user=true&show_reposts=false&show_teaser=true&visual=true`;
     }
 
     static generateEmbedCode(mediaInfo, width = '100%', height = '300') {
-        const { type, embedUrl } = mediaInfo;
+        const { type, embedUrl, originalUrl } = mediaInfo;
 
         switch (type) {
             case 'youtube':
-            case 'vimeo':
                 return `<iframe 
                     src="${embedUrl}" 
                     width="${width}" 
                     height="${height}" 
                     frameborder="0" 
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                    allowfullscreen>
+                    allowfullscreen
+                    loading="lazy">
+                </iframe>`;
+            
+            case 'vimeo':
+                return `<iframe 
+                    src="${embedUrl}" 
+                    width="${width}" 
+                    height="${height}" 
+                    frameborder="0" 
+                    allow="autoplay; fullscreen; picture-in-picture" 
+                    allowfullscreen
+                    loading="lazy">
                 </iframe>`;
             
             case 'soundcloud':
+                // Special handling for on.soundcloud.com links
+                if (originalUrl.includes('on.soundcloud.com')) {
+                    return `
+                    <div style="background: #f8fafc; padding: 20px; border-radius: 8px; text-align: center;">
+                        <p style="margin-bottom: 10px; color: #666;">SoundCloud Preview Link</p>
+                        <a href="${originalUrl}" target="_blank" style="display: inline-block; padding: 10px 20px; background: #ff5500; color: white; text-decoration: none; border-radius: 4px;">
+                            Open in SoundCloud
+                        </a>
+                        <p style="margin-top: 10px; font-size: 12px; color: #999;">
+                            Note: Preview links may not embed directly. Click to open in SoundCloud.
+                        </p>
+                    </div>`;
+                }
                 return `<iframe 
                     width="${width}" 
                     height="${height}" 
                     scrolling="no" 
                     frameborder="no" 
                     allow="autoplay"
-                    src="https://w.soundcloud.com/player/?url=${encodeURIComponent(embedUrl)}&color=%23ff5500&auto_play=false&hide_related=false&show_comments=true&show_user=true&show_reposts=false&show_teaser=true&visual=true">
+                    src="${embedUrl}">
                 </iframe>`;
             
             case 'audio':
-                return `<audio controls style="width: 100%;">
+                return `<audio controls style="width: 100%;" preload="metadata">
                     <source src="${embedUrl}" type="audio/mpeg">
                     Your browser does not support the audio element.
                 </audio>`;
             
             case 'video':
-                return `<video controls style="width: 100%; max-width: 100%;">
+                return `<video controls style="width: 100%; max-width: 100%;" preload="metadata">
                     <source src="${embedUrl}" type="video/mp4">
                     Your browser does not support the video element.
                 </video>`;
             
             default:
-                return `<a href="${embedUrl}" target="_blank">${embedUrl}</a>`;
+                return `<a href="${embedUrl}" target="_blank" style="display: inline-block; padding: 10px 15px; background: #6366f1; color: white; text-decoration: none; border-radius: 4px;">Open Link</a>`;
         }
     }
 
@@ -672,10 +742,21 @@ class EnhancedImageMarkerEditor {
 
         const typeLabel = typeLabels[mediaInfo.type] || '📌 Media';
         
+        // Special handling for on.soundcloud.com links
+        let specialNote = '';
+        if (url.includes('on.soundcloud.com')) {
+            specialNote = `
+            <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px; padding: 8px; margin: 8px 0; font-size: 12px;">
+                💡 <strong>Note:</strong> SoundCloud preview links may not embed directly in the editor. 
+                They will work in the exported HTML file.
+            </div>`;
+        }
+        
         preview.innerHTML = `
             <div style="margin-bottom: 8px; font-weight: 500; color: var(--text-primary);">
                 ${typeLabel}
             </div>
+            ${specialNote}
             ${MediaURLHandler.generateEmbedCode(mediaInfo, '100%', '200')}
             <div style="margin-top: 8px; font-size: 12px; color: var(--text-secondary);">
                 Source: <a href="${url}" target="_blank">${url}</a>
@@ -961,51 +1042,71 @@ class EnhancedImageMarkerEditor {
             getEmbedCode: function(url, type) {
                 if (!url) return '';
                 
+                // Clean URL
+                const cleanUrl = this.cleanUrl(url);
+                
                 // YouTube
-                if (url.includes('youtube.com') || url.includes('youtu.be')) {
-                    const videoId = this.extractYouTubeId(url);
+                if (cleanUrl.includes('youtube.com') || cleanUrl.includes('youtu.be')) {
+                    const videoId = this.extractYouTubeId(cleanUrl);
                     if (videoId) {
-                        return '<iframe width="100%" height="315" src="https://www.youtube.com/embed/' + videoId + '" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>';
+                        return '<iframe width="100%" height="315" src="https://www.youtube.com/embed/' + videoId + '?rel=0&modestbranding=1" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>';
                     }
                 }
                 
                 // Vimeo
-                if (url.includes('vimeo.com')) {
-                    const videoId = this.extractVimeoId(url);
+                if (cleanUrl.includes('vimeo.com')) {
+                    const videoId = this.extractVimeoId(cleanUrl);
                     if (videoId) {
-                        return '<iframe src="https://player.vimeo.com/video/' + videoId + '" width="100%" height="315" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>';
+                        return '<iframe src="https://player.vimeo.com/video/' + videoId + '?title=0&byline=0&portrait=0" width="100%" height="315" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>';
                     }
                 }
                 
                 // SoundCloud
-                if (url.includes('soundcloud.com')) {
-                    return '<iframe width="100%" height="166" scrolling="no" frameborder="no" allow="autoplay" src="https://w.soundcloud.com/player/?url=' + encodeURIComponent(url) + '&color=%23ff5500&auto_play=false&hide_related=false&show_comments=true&show_user=true&show_reposts=false&show_teaser=true"></iframe>';
+                if (cleanUrl.includes('soundcloud.com') || cleanUrl.includes('on.soundcloud.com')) {
+                    // Special handling for on.soundcloud.com links
+                    if (cleanUrl.includes('on.soundcloud.com')) {
+                        return '<div style="background: #f8fafc; padding: 20px; border-radius: 8px; text-align: center; margin: 10px 0;">' +
+                               '<p style="margin-bottom: 15px; color: #666;">🎵 SoundCloud Audio</p>' +
+                               '<a href="' + url + '" target="_blank" style="display: inline-block; padding: 12px 24px; background: #ff5500; color: white; text-decoration: none; border-radius: 6px; font-weight: bold;">' +
+                               'Listen on SoundCloud</a>' +
+                               '</div>';
+                    }
+                    return '<iframe width="100%" height="166" scrolling="no" frameborder="no" allow="autoplay" src="https://w.soundcloud.com/player/?url=' + encodeURIComponent(cleanUrl) + '&color=%23ff5500&auto_play=false&hide_related=false&show_comments=true&show_user=true&show_reposts=false&show_teaser=true&visual=true"></iframe>';
                 }
                 
                 // Audio files
-                if (url.match(/\\.(mp3|wav|ogg|m4a|aac)(\\?.*)?$/i)) {
-                    return '<audio controls style="width: 100%"><source src="' + url + '">Your browser does not support audio.</audio>';
+                if (cleanUrl.match(/\\.(mp3|wav|ogg|m4a|aac)(\\?.*)?$/i)) {
+                    return '<audio controls style="width: 100%"><source src="' + cleanUrl + '">Your browser does not support audio.</audio>';
                 }
                 
                 // Video files
-                if (url.match(/\\.(mp4|webm|ogg|mov|avi)(\\?.*)?$/i)) {
-                    return '<video controls style="width: 100%; max-width: 100%"><source src="' + url + '">Your browser does not support video.</video>';
+                if (cleanUrl.match(/\\.(mp4|webm|ogg|mov|avi)(\\?.*)?$/i)) {
+                    return '<video controls style="width: 100%; max-width: 100%"><source src="' + cleanUrl + '">Your browser does not support video.</video>';
                 }
                 
-                return '<a href="' + url + '" target="_blank">' + url + '</a>';
+                return '<a href="' + cleanUrl + '" target="_blank" style="display: inline-block; padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 4px;">Open Link</a>';
+            },
+            
+            cleanUrl: function(url) {
+                return url
+                    .replace(/\\?si=[^&]+/, '')
+                    .replace(/\\?feature=share/, '')
+                    .replace(/\\?utm_[^&]+/g, '')
+                    .split('?')[0];
             },
             
             extractYouTubeId: function(url) {
                 const patterns = [
                     /(?:https?:\\/\\/)?(?:www\\.)?(?:youtube\\.com\\/watch\\?v=|youtu\\.be\\/)([^&\\n?#]+)/,
                     /(?:https?:\\/\\/)?(?:www\\.)?youtube\\.com\\/embed\\/([^&\\n?#]+)/,
-                    /(?:https?:\\/\\/)?(?:www\\.)?youtube\\.com\\/v\\/([^&\\n?#]+)/
+                    /(?:https?:\\/\\/)?(?:www\\.)?youtube\\.com\\/v\\/([^&\\n?#]+)/,
+                    /(?:https?:\\/\\/)?(?:www\\.)?youtube\\.com\\/shorts\\/([^&\\n?#]+)/
                 ];
                 
                 for (const pattern of patterns) {
                     const match = url.match(pattern);
                     if (match && match[1]) {
-                        return match[1].split('?')[0];
+                        return match[1].split('?')[0].split('&')[0];
                     }
                 }
                 return null;
@@ -1047,8 +1148,7 @@ class EnhancedImageMarkerEditor {
             const linkElement = document.getElementById('popupLink');
             if (marker.type === 'link' && marker.url) {
                 linkElement.href = marker.url;
-                linkElement.textContent = marker.url.includes('youtube.com') || marker.url.includes('vimeo.com') || marker.url.includes('soundcloud.com') ? 
-                    'Open Media' : 'Visit Link';
+                linkElement.textContent = 'Visit Link';
                 linkElement.style.display = 'inline-block';
             } else {
                 linkElement.style.display = 'none';
