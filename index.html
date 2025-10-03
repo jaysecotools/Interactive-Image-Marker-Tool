@@ -17,8 +17,8 @@
                 <select id="markerType">
                     <option value="info">📋 Info Marker</option>
                     <option value="link">🔗 Link Marker</option>
-                    <option value="audio">🎵 Audio Marker</option>
-                    <option value="video">🎬 Video Marker</option>
+                    <option value="audio">🎵 Audio Marker (MP3, WAV, SoundCloud)</option>
+                    <option value="video">🎬 Video Marker (MP4, YouTube, Vimeo)</option>
                 </select>
                 <input type="color" id="markerColor" value="#6366f1" title="Marker Color">
                 <div class="opacity-control">
@@ -79,13 +79,17 @@
                 </div>
                 <div class="property-group" id="linkUrlGroup" style="display: none;">
                     <label>URL:</label>
-                    <input type="url" id="markerUrl" placeholder="https://example.com">
+                    <input type="url" id="markerUrl" placeholder="https://example.com or media service URL">
                     <div class="url-preview" id="linkPreview" style="display: none;"></div>
                 </div>
                 <div class="property-group" id="mediaUrlGroup" style="display: none;">
                     <label>Media URL:</label>
-                    <input type="url" id="markerMediaUrl" placeholder="URL to audio/video file">
+                    <input type="url" id="markerMediaUrl" placeholder="YouTube, Vimeo, SoundCloud, or direct MP4/MP3 links...">
                     <div class="media-preview" id="mediaPreview" style="display: none;"></div>
+                    <div class="url-help">
+                        <strong>Supported services:</strong> YouTube, Vimeo, SoundCloud<br>
+                        <strong>File formats:</strong> MP4, WebM, MP3, WAV, OGG
+                    </div>
                 </div>
                 <div class="property-group">
                     <label>Color:</label>
