@@ -7,6 +7,8 @@
     <link rel="stylesheet" href="styles/editor.css">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Preload A-Frame for VR -->
+    <link rel="preload" href="https://aframe.io/releases/1.4.0/aframe.min.js" as="script">
 </head>
 <body>
     <div class="container">
@@ -41,10 +43,10 @@
                     <span class="material-icons">clear_all</span>
                     Clear
                 </button>
-                <button id="undoBtn" title="Undo (Ctrl+Z)">
+                <button id="undoBtn" title="Undo (Ctrl+Z)" disabled>
                     <span class="material-icons">undo</span>
                 </button>
-                <button id="redoBtn" title="Redo (Ctrl+Y)">
+                <button id="redoBtn" title="Redo (Ctrl+Y)" disabled>
                     <span class="material-icons">redo</span>
                 </button>
             </div>
@@ -57,7 +59,11 @@
                     <h3>📍 Markers</h3>
                     <input type="text" id="searchMarkers" placeholder="Search markers...">
                 </div>
-                <div class="marker-list" id="markerList"></div>
+                <div class="marker-list" id="markerList">
+                    <div class="no-markers" style="padding: 20px; text-align: center; color: var(--text-muted);">
+                        No markers yet. Click on the image to add markers.
+                    </div>
+                </div>
             </div>
 
             <div class="editor-area">
@@ -67,7 +73,7 @@
                         <p>Upload an image to start adding markers</p>
                         <small>Click anywhere on the image to place markers</small>
                     </div>
-                    <img id="mainImage" style="display: none;">
+                    <img id="mainImage" style="display: none;" alt="Uploaded image for marking">
                     <div class="image-type-indicator" id="imageTypeIndicator"></div>
                 </div>
             </div>
@@ -75,20 +81,20 @@
             <div class="properties-panel" id="markerProperties" style="display: none;">
                 <h3>⚙️ Marker Properties</h3>
                 <div class="property-group">
-                    <label>Title:</label>
+                    <label for="markerTitle">Title:</label>
                     <input type="text" id="markerTitle" placeholder="Enter marker title">
                 </div>
                 <div class="property-group">
-                    <label>Description:</label>
+                    <label for="markerDescription">Description:</label>
                     <textarea id="markerDescription" placeholder="Enter marker description"></textarea>
                 </div>
                 <div class="property-group" id="linkUrlGroup" style="display: none;">
-                    <label>URL:</label>
+                    <label for="markerUrl">URL:</label>
                     <input type="url" id="markerUrl" placeholder="https://example.com">
                     <div class="url-preview" id="linkPreview" style="display: none;"></div>
                 </div>
                 <div class="property-group" id="mediaUrlGroup" style="display: none;">
-                    <label>Media URL:</label>
+                    <label for="markerMediaUrl">Media URL:</label>
                     <input type="url" id="markerMediaUrl" placeholder="YouTube, Vimeo, SoundCloud, or direct MP4/MP3 links...">
                     <div class="media-preview" id="mediaPreview" style="display: none;"></div>
                     <div class="url-help">
@@ -97,11 +103,11 @@
                     </div>
                 </div>
                 <div class="property-group">
-                    <label>Color:</label>
+                    <label for="markerCustomColor">Color:</label>
                     <input type="color" id="markerCustomColor" value="#6366f1">
                 </div>
                 <div class="property-group">
-                    <label>Opacity:</label>
+                    <label for="markerCustomOpacity">Opacity:</label>
                     <input type="range" id="markerCustomOpacity" min="0.1" max="1" step="0.1" value="0.8">
                 </div>
                 <div class="property-actions">
@@ -145,6 +151,7 @@
         </div>
     </div>
 
+    <!-- Context Menu -->
     <div id="contextMenu" class="context-menu">
         <div class="context-item" data-action="edit">
             <span class="material-icons">edit</span>
@@ -158,6 +165,14 @@
             <span class="material-icons">palette</span>
             Change Color
         </div>
+    </div>
+
+    <!-- Bulk Actions -->
+    <div class="bulk-actions" id="bulkActions">
+        <span id="bulkCount">0 markers selected</span>
+        <button id="bulkDelete">Delete Selected</button>
+        <button id="bulkColor">Change Color</button>
+        <button id="bulkClear">Clear Selection</button>
     </div>
 
     <script src="exporter.js"></script>
