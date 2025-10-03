@@ -25,7 +25,14 @@
 
 body {
     font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
-    background: var(--background-color);
+    background: 
+        linear-gradient(27deg, #151515 1px, transparent 1px) 0 1px,
+        linear-gradient(207deg, #151515 1px, transparent 1px) 5px 0px,
+        linear-gradient(27deg, #1a1a1a 1px, transparent 1px) 0px 5px,
+        linear-gradient(207deg, #1a1a1a 1px, transparent 1px) 5px 1px;
+    background-color: #0f0f0f;
+    background-size: 10px 10px;
+}
     padding: 24px;
     color: var(--text-primary);
     line-height: 1.6;
