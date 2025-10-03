@@ -1,1658 +1,818 @@
-class MediaURLHandler {
-    static getMediaType(url) {
-        if (!url) return null;
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
 
-        // Clean the URL first
-        const cleanUrl = this.cleanUrl(url);
+:root {
+    --primary-color: #6366f1;
+    --primary-hover: #4f46e5;
+    --success-color: #10b981;
+    --warning-color: #f59e0b;
+    --danger-color: #ef4444;
+    --background-color: #f8fafc;
+    --surface-color: #ffffff;
+    --text-primary: #1e293b;
+    --text-secondary: #64748b;
+    --text-muted: #94a3b8;
+    --border-color: #e2e8f0;
+    --border-radius: 12px;
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --transition: all 0.2s ease-in-out;
+}
 
-        // YouTube patterns
-        const youtubePatterns = [
-            /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/,
-            /(?:https?:\/\/)?(?:www\.)?youtube\.com\/embed\/([^&\n?#]+)/,
-            /(?:https?:\/\/)?(?:www\.)?youtube\.com\/v\/([^&\n?#]+)/,
-            /(?:https?:\/\/)?(?:www\.)?youtube\.com\/shorts\/([^&\n?#]+)/
-        ];
+/* App Background - Carbon Fiber */
+body {
+    background: 
+        linear-gradient(27deg, #151515 1px, transparent 1px) 0 1px,
+        linear-gradient(207deg, #151515 1px, transparent 1px) 5px 0px,
+        linear-gradient(27deg, #1a1a1a 1px, transparent 1px) 0px 5px,
+        linear-gradient(207deg, #1a1a1a 1px, transparent 1px) 5px 1px;
+    background-color: #0f0f0f;
+    background-size: 10px 10px;
+    font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    padding: 24px;
+    color: var(--text-primary);
+    line-height: 1.6;
+}
 
-        // Vimeo patterns
-        const vimeoPatterns = [
-            /(?:https?:\/\/)?(?:www\.)?vimeo\.com\/([0-9]+)/,
-            /(?:https?:\/\/)?(?:www\.)?vimeo\.com\/groups\/[^\/]+\/videos\/([0-9]+)/,
-            /(?:https?:\/\/)?(?:www\.)?vimeo\.com\/channels\/[^\/]+\/([0-9]+)/
-        ];
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    background: rgba(15, 15, 15, 0.7);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 20px;
+}
 
-        // SoundCloud patterns
-        const soundcloudPatterns = [
-            /(?:https?:\/\/)?(?:www\.)?soundcloud\.com\/[^\/]+\/[^\/]+/,
-            /(?:https?:\/\/)?(?:www\.)?on\.soundcloud\.com\/[^\/]+/
-        ];
+/* Header & Controls */
+header {
+    background: rgba(30, 30, 30, 0.9) !important;
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    padding: 24px;
+    border-radius: var(--border-radius);
+    margin-bottom: 24px;
+}
 
-        // Direct file extensions
-        const audioExtensions = ['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac'];
-        const videoExtensions = ['mp4', 'webm', 'ogg', 'mov', 'avi', 'mkv', 'm4v'];
+header h1 {
+    margin-bottom: 20px;
+    color: var(--text-primary);
+    font-size: 28px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6, #ec4899);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: 0 2px 10px rgba(99, 102, 241, 0.3);
+}
 
-        const urlLower = cleanUrl.toLowerCase();
-        
-        // Check YouTube
-        for (const pattern of youtubePatterns) {
-            if (pattern.test(cleanUrl)) {
-                return { 
-                    type: 'youtube', 
-                    embedUrl: this.getYouTubeEmbedUrl(cleanUrl),
-                    originalUrl: url
-                };
-            }
-        }
+.controls {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+}
 
-        // Check Vimeo
-        for (const pattern of vimeoPatterns) {
-            if (pattern.test(cleanUrl)) {
-                return { 
-                    type: 'vimeo', 
-                    embedUrl: this.getVimeoEmbedUrl(cleanUrl),
-                    originalUrl: url
-                };
-            }
-        }
+.controls input, .controls select, .controls button {
+    padding: 10px 16px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    transition: var(--transition);
+    background: var(--surface-color);
+}
 
-        // Check SoundCloud
-        for (const pattern of soundcloudPatterns) {
-            if (pattern.test(cleanUrl)) {
-                return { 
-                    type: 'soundcloud', 
-                    embedUrl: this.getSoundCloudEmbedUrl(cleanUrl),
-                    originalUrl: url
-                };
-            }
-        }
+.controls input:focus, .controls select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
 
-        // Check direct file links
-        const extension = urlLower.split('.').pop().split('?')[0];
-        if (audioExtensions.includes(extension)) {
-            return { 
-                type: 'audio', 
-                embedUrl: url,
-                originalUrl: url
-            };
-        }
-        if (videoExtensions.includes(extension)) {
-            return { 
-                type: 'video', 
-                embedUrl: url,
-                originalUrl: url
-            };
-        }
+.controls button {
+    background: linear-gradient(135deg, #6366f1, #4f46e5);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    cursor: pointer;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    box-shadow: 
+        0 4px 12px rgba(99, 102, 241, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
 
-        return { 
-            type: 'unknown', 
-            embedUrl: url,
-            originalUrl: url
-        };
-    }
+.controls button:hover {
+    background: linear-gradient(135deg, #4f46e5, #4338ca);
+    transform: translateY(-2px);
+    box-shadow: 
+        0 6px 20px rgba(99, 102, 241, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
 
-    static cleanUrl(url) {
-        return url
-            .replace(/\?si=[^&]+/, '')
-            .replace(/\?feature=share/, '')
-            .replace(/\?utm_[^&]+/g, '')
-            .split('?')[0];
-    }
+.controls button:disabled {
+    background: var(--text-muted);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
 
-    static getYouTubeEmbedUrl(url) {
-        const patterns = [
-            /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/,
-            /(?:https?:\/\/)?(?:www\.)?youtube\.com\/embed\/([^&\n?#]+)/,
-            /(?:https?:\/\/)?(?:www\.)?youtube\.com\/v\/([^&\n?#]+)/,
-            /(?:https?:\/\/)?(?:www\.)?youtube\.com\/shorts\/([^&\n?#]+)/
-        ];
+.controls button i {
+    font-size: 16px;
+}
 
-        for (const pattern of patterns) {
-            const match = url.match(pattern);
-            if (match && match[1]) {
-                const videoId = match[1].split('?')[0].split('&')[0];
-                return `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1`;
-            }
-        }
-        return url;
-    }
+#markerColor {
+    width: 50px;
+    height: 40px;
+    padding: 2px;
+    border-radius: 6px;
+    cursor: pointer;
+}
 
-    static getVimeoEmbedUrl(url) {
-        const patterns = [
-            /(?:https?:\/\/)?(?:www\.)?vimeo\.com\/([0-9]+)/,
-            /(?:https?:\/\/)?(?:www\.)?vimeo\.com\/groups\/[^\/]+\/videos\/([0-9]+)/,
-            /(?:https?:\/\/)?(?:www\.)?vimeo\.com\/channels\/[^\/]+\/([0-9]+)/
-        ];
+.opacity-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface-color);
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
 
-        for (const pattern of patterns) {
-            const match = url.match(pattern);
-            if (match && match[1]) {
-                const videoId = match[1];
-                return `https://player.vimeo.com/video/${videoId}?title=0&byline=0&portrait=0`;
-            }
-        }
-        return url;
-    }
+.opacity-control label {
+    font-size: 14px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    font-weight: 500;
+}
 
-    static getSoundCloudEmbedUrl(url) {
-        if (url.includes('on.soundcloud.com')) {
-            return `https://w.soundcloud.com/player/?url=${encodeURIComponent(url)}&color=%23ff5500&auto_play=false&hide_related=false&show_comments=true&show_user=true&show_reposts=false&show_teaser=true&visual=true`;
-        }
-        
-        return `https://w.soundcloud.com/player/?url=${encodeURIComponent(url)}&color=%23ff5500&auto_play=false&hide_related=false&show_comments=true&show_user=true&show_reposts=false&show_teaser=true&visual=true`;
-    }
+#markerOpacity {
+    width: 80px;
+    accent-color: var(--primary-color);
+}
 
-    static generateEmbedCode(mediaInfo, width = '100%', height = '300') {
-        const { type, embedUrl, originalUrl } = mediaInfo;
+/* VR Mode Toggle */
+#vrModeBtn.vr-active {
+    background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+    box-shadow: 
+        0 4px 12px rgba(245, 158, 11, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
 
-        switch (type) {
-            case 'youtube':
-                return `<iframe 
-                    src="${embedUrl}" 
-                    width="${width}" 
-                    height="${height}" 
-                    frameborder="0" 
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                    allowfullscreen
-                    loading="lazy">
-                </iframe>`;
-            
-            case 'vimeo':
-                return `<iframe 
-                    src="${embedUrl}" 
-                    width="${width}" 
-                    height="${height}" 
-                    frameborder="0" 
-                    allow="autoplay; fullscreen; picture-in-picture" 
-                    allowfullscreen
-                    loading="lazy">
-                </iframe>`;
-            
-            case 'soundcloud':
-                if (originalUrl.includes('on.soundcloud.com')) {
-                    return `
-                    <div style="background: #f8fafc; padding: 20px; border-radius: 8px; text-align: center;">
-                        <p style="margin-bottom: 10px; color: #666;">SoundCloud Preview Link</p>
-                        <a href="${originalUrl}" target="_blank" style="display: inline-block; padding: 10px 20px; background: #ff5500; color: white; text-decoration: none; border-radius: 4px;">
-                            Open in SoundCloud
-                        </a>
-                        <p style="margin-top: 10px; font-size: 12px; color: #999;">
-                            Note: Preview links may not embed directly. Click to open in SoundCloud.
-                        </p>
-                    </div>`;
-                }
-                return `<iframe 
-                    width="${width}" 
-                    height="${height}" 
-                    scrolling="no" 
-                    frameborder="no" 
-                    allow="autoplay"
-                    src="${embedUrl}">
-                </iframe>`;
-            
-            case 'audio':
-                return `<audio controls style="width: 100%;" preload="metadata">
-                    <source src="${embedUrl}" type="audio/mpeg">
-                    Your browser does not support the audio element.
-                </audio>`;
-            
-            case 'video':
-                return `<video controls style="width: 100%; max-width: 100%;" preload="metadata">
-                    <source src="${embedUrl}" type="video/mp4">
-                    Your browser does not support the video element.
-                </video>`;
-            
-            default:
-                return `<a href="${embedUrl}" target="_blank" style="display: inline-block; padding: 10px 15px; background: #6366f1; color: white; text-decoration: none; border-radius: 4px;">Open Link</a>`;
-        }
-    }
+#vrModeBtn.vr-active:hover {
+    background: linear-gradient(135deg, #d97706, #b45309) !important;
+    box-shadow: 
+        0 6px 20px rgba(245, 158, 11, 0.5),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
 
-    static isValidMediaUrl(url) {
-        const mediaInfo = this.getMediaType(url);
-        return mediaInfo.type !== 'unknown';
+/* Main Layout */
+.main-content {
+    display: grid;
+    grid-template-columns: 320px 1fr 320px;
+    gap: 24px;
+    align-items: start;
+}
+
+/* Sidebar */
+.sidebar {
+    background: rgba(30, 30, 30, 0.9) !important;
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+}
+
+.sidebar-header {
+    padding: 20px;
+    border-bottom: 1px solid var(--border-color);
+    background: linear-gradient(135deg, var(--surface-color), #f8fafc);
+}
+
+.sidebar-header h3 {
+    margin-bottom: 12px;
+    color: var(--text-primary);
+    font-size: 18px;
+    font-weight: 600;
+}
+
+#searchMarkers {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 14px;
+    transition: var(--transition);
+}
+
+#searchMarkers:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.marker-list {
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.marker-item {
+    padding: 16px;
+    border-bottom: 1px solid var(--border-color);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: var(--transition);
+}
+
+.marker-item:hover {
+    background: #f8fafc;
+}
+
+.marker-item.selected {
+    background: #eef2ff;
+    border-left: 4px solid var(--primary-color);
+}
+
+.marker-icon {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    box-shadow: var(--shadow-sm);
+}
+
+.marker-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.marker-title {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 14px;
+}
+
+.marker-type {
+    font-size: 12px;
+    color: var(--text-secondary);
+    text-transform: capitalize;
+    font-weight: 500;
+}
+
+/* Editor Area */
+.editor-area {
+    background: rgba(30, 30, 30, 0.9) !important;
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+}
+
+.image-container {
+    position: relative;
+    min-height: 600px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: 
+        linear-gradient(45deg, rgba(40, 40, 40, 0.3) 25%, transparent 25%), 
+        linear-gradient(-45deg, rgba(40, 40, 40, 0.3) 25%, transparent 25%), 
+        linear-gradient(45deg, transparent 75%, rgba(40, 40, 40, 0.3) 75%), 
+        linear-gradient(-45deg, transparent 75%, rgba(40, 40, 40, 0.3) 75%),
+        radial-gradient(circle at center, rgba(20, 20, 20, 0.4) 0%, transparent 70%);
+    background-size: 20px 20px, 20px 20px, 20px 20px, 20px 20px, cover;
+    background-position: 0 0, 0 10px, 10px -10px, -10px 0px, center;
+    cursor: crosshair;
+}
+
+.placeholder {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 18px;
+    text-align: center;
+    padding: 40px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 12px;
+    border: 2px dashed rgba(255, 255, 255, 0.2);
+}
+
+.placeholder i {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+}
+
+#mainImage {
+    max-width: 100%;
+    max-height: 80vh;
+    display: block;
+    border-radius: 4px;
+}
+
+/* Image Type Indicator */
+.image-type-indicator {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    z-index: 100;
+    display: none;
+}
+
+.image-type-indicator.standard {
+    background: var(--primary-color);
+}
+
+.image-type-indicator.vr-360 {
+    background: linear-gradient(135deg, #10b981, #059669);
+}
+
+/* Enhanced Marker Styles */
+.marker {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border: 2px solid white;
+    border-radius: 50%;
+    cursor: pointer;
+    transform: translate(-50%, -50%);
+    box-shadow: 
+        0 2px 8px rgba(0, 0, 0, 0.6),
+        0 0 0 2px rgba(255, 255, 255, 0.8);
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: bold;
+    color: white;
+    z-index: 10;
+}
+
+.marker:hover {
+    transform: translate(-50%, -50%) scale(1.4);
+    z-index: 100;
+    box-shadow: 
+        0 4px 16px rgba(0, 0, 0, 0.8),
+        0 0 0 3px rgba(255, 255, 255, 1);
+}
+
+.marker.dragging {
+    transform: translate(-50%, -50%) scale(1.5);
+    z-index: 1000;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+}
+
+.marker.selected {
+    box-shadow: 0 0 0 3px var(--primary-color), 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* VR Hotspot Markers */
+.marker.vr-hotspot {
+    width: 24px;
+    height: 24px;
+    animation: pulse 2s infinite;
+    border: 3px solid white;
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.7); }
+    70% { box-shadow: 0 0 0 8px rgba(99, 102, 241, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+}
+
+/* Marker Icons */
+.marker.info::after { content: 'i'; font-size: 10px; }
+.marker.link::after { content: '🔗'; font-size: 8px; }
+.marker.audio::after { content: '♪'; font-size: 8px; }
+.marker.video::after { content: '▶'; font-size: 8px; }
+
+/* Default colors */
+.marker.info { background: var(--primary-color); }
+.marker.link { background: var(--success-color); }
+.marker.audio { background: var(--warning-color); color: #000; }
+.marker.video { background: var(--danger-color); }
+
+/* Properties Panel */
+.properties-panel {
+    background: rgba(30, 30, 30, 0.9) !important;
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    padding: 24px;
+    border-radius: var(--border-radius);
+}
+
+.properties-panel h3 {
+    margin-bottom: 20px;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 12px;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.property-group {
+    margin-bottom: 20px;
+}
+
+.property-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 14px;
+}
+
+.property-group input, .property-group textarea, .property-group select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 14px;
+    transition: var(--transition);
+    background: var(--surface-color);
+    font-family: inherit;
+}
+
+.property-group input:focus, .property-group textarea:focus, .property-group select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.property-group textarea {
+    height: 100px;
+    resize: vertical;
+    line-height: 1.5;
+}
+
+.property-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+.btn-primary {
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    flex: 1;
+    font-weight: 500;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.btn-danger {
+    background: var(--danger-color);
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    flex: 1;
+    font-weight: 500;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.btn-primary:hover {
+    background: var(--primary-hover);
+    transform: translateY(-1px);
+}
+
+.btn-danger:hover {
+    background: #dc2626;
+    transform: translateY(-1px);
+}
+
+.url-preview, .media-preview {
+    margin-top: 8px;
+    padding: 12px;
+    background: #f8fafc;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.media-preview audio, .media-preview video {
+    width: 100%;
+    margin-top: 8px;
+    border-radius: 4px;
+}
+
+.media-preview iframe {
+    border: none;
+    min-height: 200px;
+    border-radius: 8px;
+}
+
+.url-help {
+    background: #f8fafc;
+    padding: 8px 12px;
+    border-radius: 6px;
+    border-left: 3px solid var(--primary-color);
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 8px;
+    line-height: 1.4;
+}
+
+.url-help strong {
+    color: var(--text-primary);
+}
+
+/* Status Messages */
+.status {
+    margin-top: 16px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    display: none;
+    font-weight: 500;
+    border: 1px solid transparent;
+}
+
+.status.success {
+    background: #d1fae5;
+    color: #065f46;
+    border-color: #a7f3d0;
+}
+
+.status.error {
+    background: #fee2e2;
+    color: #991b1b;
+    border-color: #fecaca;
+}
+
+.status.warning {
+    background: #fef3c7;
+    color: #92400e;
+    border-color: #fde68a;
+}
+
+/* Context Menu */
+.context-menu {
+    position: fixed;
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: var(--shadow-lg);
+    z-index: 1000;
+    display: none;
+    min-width: 160px;
+}
+
+.context-item {
+    padding: 12px 16px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border-color);
+    transition: var(--transition);
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.context-item:hover {
+    background: #f8fafc;
+}
+
+.context-item:last-child {
+    border-bottom: none;
+}
+
+/* Modal Styles */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+    backdrop-filter: blur(5px);
+}
+
+.modal-content {
+    background: var(--surface-color);
+    padding: 30px;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-lg);
+    max-width: 500px;
+    width: 90%;
+    border: 1px solid var(--border-color);
+}
+
+.modal-content h3 {
+    margin-bottom: 20px;
+    color: var(--text-primary);
+    text-align: center;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+/* Export Options */
+.export-options {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.export-option {
+    padding: 20px;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: var(--transition);
+    margin-bottom: 15px;
+}
+
+.export-option:hover {
+    border-color: var(--primary-color);
+    background: rgba(99, 102, 241, 0.05);
+    transform: translateY(-2px);
+}
+
+.export-option.selected {
+    border-color: var(--primary-color);
+    background: rgba(99, 102, 241, 0.1);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+}
+
+.export-option h4 {
+    margin-bottom: 8px;
+    color: var(--text-primary);
+    font-size: 16px;
+}
+
+.export-option p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin: 0;
+    line-height: 1.5;
+}
+
+/* Multi-select styles */
+.marker.multi-selected {
+    box-shadow: 0 0 0 3px var(--warning-color), 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.bulk-actions {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--text-primary);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 24px;
+    display: none;
+    gap: 12px;
+    z-index: 1000;
+    box-shadow: var(--shadow-lg);
+}
+
+.bulk-actions button {
+    background: transparent;
+    border: 1px solid #475569;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 16px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: var(--transition);
+}
+
+.bulk-actions button:hover {
+    background: #475569;
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+    .main-content {
+        grid-template-columns: 280px 1fr 280px;
+        gap: 20px;
     }
 }
 
-class EnhancedImageMarkerEditor {
-    constructor() {
-        this.image = document.getElementById('mainImage');
-        this.container = document.getElementById('imageContainer');
-        this.markers = [];
-        this.selectedMarkers = new Set();
-        this.undoStack = [];
-        this.redoStack = [];
-        this.dragState = null;
-        this.currentMarkerColor = '#6366f1';
-        this.currentMarkerOpacity = 0.8;
-        this.isVRMode = false;
-        this.is360Image = false;
-        
-        this.initializeEventListeners();
-        this.showStatus('Ready to upload image and add markers', 'success');
-        this.setupKeyboardShortcuts();
-        this.setupMediaUrlHelpers();
-        
-        this.currentMarkerColor = document.getElementById('markerColor').value;
-        this.currentMarkerOpacity = parseFloat(document.getElementById('markerOpacity').value);
+@media (max-width: 1024px) {
+    .main-content {
+        grid-template-columns: 1fr;
+        gap: 20px;
     }
-
-    initializeEventListeners() {
-        // Existing event listeners
-        document.getElementById('imageUpload').addEventListener('change', (e) => {
-            this.handleImageUpload(e.target.files[0]);
-        });
-
-        document.getElementById('markerType').addEventListener('change', (e) => {
-            this.togglePropertyFields(e.target.value);
-        });
-
-        document.getElementById('markerColor').addEventListener('change', (e) => {
-            this.currentMarkerColor = e.target.value;
-        });
-
-        document.getElementById('markerOpacity').addEventListener('input', (e) => {
-            this.currentMarkerOpacity = parseFloat(e.target.value);
-        });
-
-        document.getElementById('markerCustomOpacity').addEventListener('input', (e) => {
-            this.updateSelectedMarkersOpacity(parseFloat(e.target.value));
-        });
-
-        this.container.addEventListener('click', (e) => {
-            if (this.image.style.display !== 'none' && !this.dragState) {
-                this.addMarker(e);
-            }
-        });
-
-        this.container.addEventListener('dblclick', (e) => {
-            if (this.image.style.display !== 'none') {
-                this.handleDoubleClick(e);
-            }
-        });
-
-        document.getElementById('saveMarker').addEventListener('click', () => {
-            this.saveMarkerProperties();
-        });
-
-        document.getElementById('deleteMarker').addEventListener('click', () => {
-            this.deleteSelectedMarkers();
-        });
-
-        document.getElementById('exportBtn').addEventListener('click', () => {
-            this.showExportOptions();
-        });
-
-        document.getElementById('importBtn').addEventListener('click', () => {
-            this.importProject();
-        });
-
-        document.getElementById('clearMarkers').addEventListener('click', () => {
-            this.clearMarkers();
-        });
-
-        document.getElementById('undoBtn').addEventListener('click', () => {
-            this.undo();
-        });
-
-        document.getElementById('redoBtn').addEventListener('click', () => {
-            this.redo();
-        });
-
-        document.getElementById('searchMarkers').addEventListener('input', (e) => {
-            this.filterMarkers(e.target.value);
-        });
-
-        document.getElementById('markerUrl').addEventListener('blur', (e) => {
-            this.validateAndPreviewUrl(e.target.value, 'link');
-        });
-
-        document.getElementById('markerMediaUrl').addEventListener('blur', (e) => {
-            this.validateAndPreviewUrl(e.target.value, 'media');
-        });
-
-        document.addEventListener('contextmenu', (e) => {
-            this.handleContextMenu(e);
-        });
-
-        document.addEventListener('click', () => {
-            this.hideContextMenu();
-        });
-
-        document.getElementById('markerCustomColor').addEventListener('change', (e) => {
-            this.updateSelectedMarkersColor(e.target.value);
-        });
-
-        // VR Mode Toggle
-        document.getElementById('vrModeBtn').addEventListener('click', () => {
-            this.toggleVRMode();
-        });
-
-        // Export modal handlers
-        document.getElementById('confirmExport').addEventListener('click', () => {
-            this.handleExportConfirm();
-        });
-
-        document.getElementById('cancelExport').addEventListener('click', () => {
-            this.hideExportModal();
-        });
+    
+    .sidebar, .properties-panel {
+        order: 2;
     }
-
-    setupKeyboardShortcuts() {
-        document.addEventListener('keydown', (e) => {
-            if (e.ctrlKey || e.metaKey) {
-                switch(e.key) {
-                    case 'z':
-                        e.preventDefault();
-                        this.undo();
-                        break;
-                    case 'y':
-                        e.preventDefault();
-                        this.redo();
-                        break;
-                    case 's':
-                        e.preventDefault();
-                        this.saveMarkerProperties();
-                        break;
-                    case 'e':
-                        e.preventDefault();
-                        this.showExportOptions();
-                        break;
-                }
-            } else if (e.key === 'Delete' || e.key === 'Backspace') {
-                if (this.selectedMarkers.size > 0) {
-                    e.preventDefault();
-                    this.deleteSelectedMarkers();
-                }
-            } else if (e.key === 'Escape') {
-                this.clearSelection();
-                this.hideExportModal();
-            }
-        });
+    
+    .editor-area {
+        order: 1;
     }
-
-    setupMediaUrlHelpers() {
-        const mediaUrlInput = document.getElementById('markerMediaUrl');
-        const linkUrlInput = document.getElementById('markerUrl');
-        
-        mediaUrlInput.placeholder = "YouTube, Vimeo, SoundCloud, or direct MP4/MP3 links...";
-        linkUrlInput.placeholder = "https://example.com";
-    }
-
-    toggleVRMode() {
-        if (!this.image.src) {
-            this.showStatus('Please upload an image first', 'warning');
-            return;
-        }
-
-        this.isVRMode = !this.isVRMode;
-        const vrButton = document.getElementById('vrModeBtn');
-        
-        if (this.isVRMode) {
-            vrButton.innerHTML = '<span class="material-icons">view_in_ar</span> VR Mode';
-            vrButton.classList.add('vr-active');
-            this.showStatus('VR Mode: Markers will be placed in 3D space for 360° viewing', 'success');
-            this.checkIf360Image();
-        } else {
-            vrButton.innerHTML = '<span class="material-icons">view_in_ar</span> 2D Mode';
-            vrButton.classList.remove('vr-active');
-            this.showStatus('2D Mode: Standard flat image markup', 'success');
-        }
-
-        // Update all markers to reflect VR mode
-        this.markers.forEach(marker => {
-            marker.is3D = this.isVRMode;
-            this.renderMarker(marker);
-        });
-    }
-
-    checkIf360Image() {
-        if (this.image.naturalWidth && this.image.naturalHeight) {
-            const aspectRatio = this.image.naturalWidth / this.image.naturalHeight;
-            this.is360Image = Math.abs(aspectRatio - 2.0) < 0.1;
-            
-            const indicator = document.getElementById('imageTypeIndicator');
-            if (this.is360Image) {
-                indicator.textContent = '🌐 360° Image';
-                indicator.className = 'image-type-indicator vr-360';
-                indicator.style.display = 'block';
-            } else {
-                indicator.textContent = '📷 Standard Image';
-                indicator.className = 'image-type-indicator standard';
-                indicator.style.display = 'block';
-            }
-        }
-    }
-
-    handleImageUpload(file) {
-        if (!file) return;
-
-        this.saveState();
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            this.loadImage(e.target.result);
-            setTimeout(() => this.checkIf360Image(), 100);
-            this.showStatus('Image loaded! Click on the image to add markers.', 'success');
-        };
-        reader.onerror = (e) => {
-            this.showStatus('Error loading image', 'error');
-        };
-        reader.readAsDataURL(file);
-    }
-
-    loadImage(src) {
-        this.image.src = src;
-        this.image.style.display = 'block';
-        this.container.querySelector('.placeholder').style.display = 'none';
-        this.clearMarkers();
-    }
-
-    addMarker(event) {
-        const rect = this.container.getBoundingClientRect();
-        const x = ((event.clientX - rect.left) / rect.width) * 100;
-        const y = ((event.clientY - rect.top) / rect.height) * 100;
-
-        const markerType = document.getElementById('markerType').value;
-        
-        const marker = {
-            id: Date.now().toString(),
-            type: markerType,
-            x: x,
-            y: y,
-            phi: this.convertXToPhi(x),
-            theta: this.convertYToTheta(y),
-            is3D: this.isVRMode,
-            title: `Marker ${this.markers.length + 1}`,
-            description: '',
-            url: '',
-            mediaUrl: '',
-            color: this.currentMarkerColor,
-            opacity: this.currentMarkerOpacity
-        };
-
-        this.saveState();
-        this.markers.push(marker);
-        this.renderMarker(marker);
-        this.selectMarker(marker.id, event.shiftKey);
-        
-        const modeText = this.isVRMode ? '3D VR' : '2D';
-        this.showStatus(`Added ${markerType} marker in ${modeText} mode`, 'success');
-        this.updateMarkerList();
-    }
-
-    convertXToPhi(x) {
-        return (x / 100) * 360;
-    }
-
-    convertYToTheta(y) {
-        return ((y / 100) * 180) - 90;
-    }
-
-    renderMarker(marker) {
-        let markerElement = this.container.querySelector(`[data-id="${marker.id}"]`);
-        
-        if (!markerElement) {
-            markerElement = document.createElement('div');
-            markerElement.className = `marker ${marker.type}`;
-            markerElement.dataset.id = marker.id;
-            this.container.appendChild(markerElement);
-            this.makeMarkerDraggable(markerElement);
-        }
-
-        if (marker.is3D) {
-            markerElement.classList.add('vr-hotspot');
-        } else {
-            markerElement.classList.remove('vr-hotspot');
-        }
-
-        markerElement.style.left = `${marker.x}%`;
-        markerElement.style.top = `${marker.y}%`;
-        markerElement.style.backgroundColor = marker.color;
-        markerElement.style.opacity = marker.opacity || 0.8;
-
-        if (this.selectedMarkers.has(marker.id)) {
-            markerElement.classList.add('selected');
-        } else {
-            markerElement.classList.remove('selected');
-        }
-    }
-
-    makeMarkerDraggable(markerElement) {
-        markerElement.addEventListener('mousedown', (e) => {
-            e.stopPropagation();
-            this.startDrag(markerElement, e);
-        });
-
-        markerElement.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const markerId = markerElement.dataset.id;
-            this.selectMarker(markerId, e.shiftKey);
-        });
-
-        markerElement.addEventListener('dblclick', (e) => {
-            e.stopPropagation();
-            const markerId = markerElement.dataset.id;
-            this.selectMarker(markerId, false);
-            this.editMarkerProperties();
-        });
-    }
-
-    startDrag(markerElement, event) {
-        const markerId = markerElement.dataset.id;
-        const marker = this.markers.find(m => m.id === markerId);
-        
-        if (!marker) return;
-
-        this.dragState = {
-            markerId: markerId,
-            startX: event.clientX,
-            startY: event.clientY,
-            startMarkerX: marker.x,
-            startMarkerY: marker.y
-        };
-
-        markerElement.classList.add('dragging');
-
-        const onMouseMove = (e) => {
-            if (!this.dragState) return;
-
-            const rect = this.container.getBoundingClientRect();
-            const deltaX = ((e.clientX - this.dragState.startX) / rect.width) * 100;
-            const deltaY = ((e.clientY - this.dragState.startY) / rect.height) * 100;
-
-            marker.x = Math.max(0, Math.min(100, this.dragState.startMarkerX + deltaX));
-            marker.y = Math.max(0, Math.min(100, this.dragState.startMarkerY + deltaY));
-
-            // Update 3D coordinates if in VR mode
-            if (marker.is3D) {
-                marker.phi = this.convertXToPhi(marker.x);
-                marker.theta = this.convertYToTheta(marker.y);
-            }
-
-            this.renderMarker(marker);
-        };
-
-        const onMouseUp = () => {
-            if (this.dragState) {
-                this.saveState();
-                markerElement.classList.remove('dragging');
-                this.dragState = null;
-            }
-            document.removeEventListener('mousemove', onMouseMove);
-            document.removeEventListener('mouseup', onMouseUp);
-        };
-
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', onMouseUp);
-    }
-
-    selectMarker(markerId, multiSelect = false) {
-        if (!multiSelect) {
-            this.selectedMarkers.clear();
-        }
-
-        if (this.selectedMarkers.has(markerId)) {
-            this.selectedMarkers.delete(markerId);
-        } else {
-            this.selectedMarkers.add(markerId);
-        }
-
-        this.updateMarkerSelection();
-        
-        if (this.selectedMarkers.size === 1) {
-            this.showMarkerProperties();
-        } else {
-            this.hideMarkerProperties();
-        }
-    }
-
-    updateMarkerSelection() {
-        document.querySelectorAll('.marker').forEach(markerEl => {
-            const markerId = markerEl.dataset.id;
-            if (this.selectedMarkers.has(markerId)) {
-                markerEl.classList.add('selected');
-            } else {
-                markerEl.classList.remove('selected');
-            }
-        });
-
-        this.updateMarkerList();
-    }
-
-    showMarkerProperties() {
-        if (this.selectedMarkers.size !== 1) return;
-
-        const markerId = Array.from(this.selectedMarkers)[0];
-        const marker = this.markers.find(m => m.id === markerId);
-        if (!marker) return;
-
-        const propsPanel = document.getElementById('markerProperties');
-        propsPanel.style.display = 'block';
-
-        document.getElementById('markerTitle').value = marker.title || '';
-        document.getElementById('markerDescription').value = marker.description || '';
-        document.getElementById('markerUrl').value = marker.url || '';
-        document.getElementById('markerMediaUrl').value = marker.mediaUrl || '';
-        document.getElementById('markerCustomColor').value = marker.color || this.currentMarkerColor;
-        document.getElementById('markerCustomOpacity').value = marker.opacity || 0.8;
-
-        this.togglePropertyFields(marker.type);
-        
-        if (marker.url) {
-            this.validateAndPreviewUrl(marker.url, 'link');
-        }
-        if (marker.mediaUrl) {
-            this.validateAndPreviewUrl(marker.mediaUrl, 'media');
-        }
-    }
-
-    hideMarkerProperties() {
-        document.getElementById('markerProperties').style.display = 'none';
-    }
-
-    saveMarkerProperties() {
-        if (this.selectedMarkers.size === 0) return;
-
-        this.saveState();
-
-        this.selectedMarkers.forEach(markerId => {
-            const marker = this.markers.find(m => m.id === markerId);
-            if (marker) {
-                marker.title = document.getElementById('markerTitle').value;
-                marker.description = document.getElementById('markerDescription').value;
-                marker.url = document.getElementById('markerUrl').value;
-                marker.mediaUrl = document.getElementById('markerMediaUrl').value;
-                marker.color = document.getElementById('markerCustomColor').value;
-                marker.opacity = parseFloat(document.getElementById('markerCustomOpacity').value);
-
-                this.renderMarker(marker);
-            }
-        });
-
-        this.showStatus('Marker properties saved', 'success');
-        this.updateMarkerList();
-    }
-
-    updateSelectedMarkersColor(color) {
-        if (this.selectedMarkers.size === 0) return;
-        
-        this.saveState();
-        this.selectedMarkers.forEach(markerId => {
-            const marker = this.markers.find(m => m.id === markerId);
-            if (marker) {
-                marker.color = color;
-                this.renderMarker(marker);
-            }
-        });
-    }
-
-    updateSelectedMarkersOpacity(opacity) {
-        if (this.selectedMarkers.size === 0) return;
-        
-        this.saveState();
-        this.selectedMarkers.forEach(markerId => {
-            const marker = this.markers.find(m => m.id === markerId);
-            if (marker) {
-                marker.opacity = opacity;
-                this.renderMarker(marker);
-            }
-        });
-    }
-
-    deleteSelectedMarkers() {
-        if (this.selectedMarkers.size === 0) return;
-
-        this.saveState();
-
-        this.selectedMarkers.forEach(markerId => {
-            this.markers = this.markers.filter(m => m.id !== markerId);
-            const markerElement = this.container.querySelector(`[data-id="${markerId}"]`);
-            if (markerElement) {
-                markerElement.remove();
-            }
-        });
-
-        this.selectedMarkers.clear();
-        this.hideMarkerProperties();
-        this.showStatus('Markers deleted', 'success');
-        this.updateMarkerList();
-    }
-
-    clearMarkers() {
-        this.saveState();
-        this.markers = [];
-        this.selectedMarkers.clear();
-        document.querySelectorAll('.marker').forEach(marker => marker.remove());
-        this.hideMarkerProperties();
-        this.showStatus('All markers cleared', 'success');
-        this.updateMarkerList();
-    }
-
-    clearSelection() {
-        this.selectedMarkers.clear();
-        this.updateMarkerSelection();
-        this.hideMarkerProperties();
-    }
-
-    updateMarkerList() {
-        const markerList = document.getElementById('markerList');
-        const searchTerm = document.getElementById('searchMarkers').value.toLowerCase();
-
-        const filteredMarkers = this.markers.filter(marker => 
-            marker.title.toLowerCase().includes(searchTerm) ||
-            marker.description.toLowerCase().includes(searchTerm) ||
-            marker.type.toLowerCase().includes(searchTerm)
-        );
-
-        markerList.innerHTML = filteredMarkers.map(marker => `
-            <div class="marker-item ${this.selectedMarkers.has(marker.id) ? 'selected' : ''}" 
-                 data-id="${marker.id}">
-                <div class="marker-icon" style="background-color: ${marker.color}; opacity: ${marker.opacity || 0.8}"></div>
-                <div class="marker-info">
-                    <div class="marker-title">${marker.title}</div>
-                    <div class="marker-type">${marker.type} ${marker.is3D ? '(VR)' : ''}</div>
-                </div>
-            </div>
-        `).join('');
-
-        markerList.querySelectorAll('.marker-item').forEach(item => {
-            item.addEventListener('click', (e) => {
-                const markerId = item.dataset.id;
-                this.selectMarker(markerId, e.shiftKey);
-            });
-        });
-    }
-
-    filterMarkers(searchTerm) {
-        this.updateMarkerList();
-    }
-
-    validateAndPreviewUrl(url, type) {
-        if (!url) {
-            this.hidePreview(type);
-            return false;
-        }
-
-        try {
-            new URL(url);
-            
-            const mediaInfo = MediaURLHandler.getMediaType(url);
-            
-            if (type === 'link') {
-                this.showLinkPreview(url, mediaInfo);
-            } else if (type === 'media') {
-                this.showMediaPreview(url, mediaInfo);
-            }
-            
-            return true;
-        } catch (e) {
-            this.showStatus('Invalid URL format', 'warning');
-            this.hidePreview(type);
-            return false;
-        }
-    }
-
-    showLinkPreview(url, mediaInfo) {
-        const preview = document.getElementById('linkPreview');
-        
-        if (mediaInfo.type !== 'unknown') {
-            preview.innerHTML = `🔗 ${mediaInfo.type.toUpperCase()} Link: <a href="${url}" target="_blank">${url}</a>`;
-        } else {
-            preview.innerHTML = `🔗 External Link: <a href="${url}" target="_blank">${url}</a>`;
-        }
-        preview.style.display = 'block';
-    }
-
-    showMediaPreview(url, mediaInfo) {
-        const preview = document.getElementById('mediaPreview');
-        
-        if (mediaInfo.type === 'unknown') {
-            preview.innerHTML = '❌ Unsupported media format or URL';
-            preview.style.display = 'block';
-            return;
-        }
-
-        const typeLabels = {
-            youtube: '📹 YouTube Video',
-            vimeo: '🎬 Vimeo Video',
-            soundcloud: '🎵 SoundCloud Audio',
-            audio: '🔊 Audio File',
-            video: '🎥 Video File'
-        };
-
-        const typeLabel = typeLabels[mediaInfo.type] || '📌 Media';
-        
-        let specialNote = '';
-        if (url.includes('on.soundcloud.com')) {
-            specialNote = `
-            <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px; padding: 8px; margin: 8px 0; font-size: 12px;">
-                💡 <strong>Note:</strong> SoundCloud preview links may not embed directly in the editor. 
-                They will work in the exported HTML file.
-            </div>`;
-        }
-        
-        preview.innerHTML = `
-            <div style="margin-bottom: 8px; font-weight: 500; color: var(--text-primary);">
-                ${typeLabel}
-            </div>
-            ${specialNote}
-            ${MediaURLHandler.generateEmbedCode(mediaInfo, '100%', '200')}
-            <div style="margin-top: 8px; font-size: 12px; color: var(--text-secondary);">
-                Source: <a href="${url}" target="_blank">${url}</a>
-            </div>
-        `;
-        preview.style.display = 'block';
-    }
-
-    hidePreview(type) {
-        const preview = type === 'link' ? 
-            document.getElementById('linkPreview') : 
-            document.getElementById('mediaPreview');
-        preview.style.display = 'none';
-    }
-
-    handleContextMenu(e) {
-        const markerElement = e.target.closest('.marker');
-        if (markerElement) {
-            e.preventDefault();
-            const markerId = markerElement.dataset.id;
-            
-            if (!this.selectedMarkers.has(markerId)) {
-                this.selectMarker(markerId, false);
-            }
-
-            this.showContextMenu(e.clientX, e.clientY);
-        }
-    }
-
-    showContextMenu(x, y) {
-        const contextMenu = document.getElementById('contextMenu');
-        contextMenu.style.left = x + 'px';
-        contextMenu.style.top = y + 'px';
-        contextMenu.style.display = 'block';
-
-        contextMenu.querySelectorAll('.context-item').forEach(item => {
-            item.onclick = () => this.handleContextAction(item.dataset.action);
-        });
-    }
-
-    hideContextMenu() {
-        const contextMenu = document.getElementById('contextMenu');
-        contextMenu.style.display = 'none';
-    }
-
-    handleContextAction(action) {
-        switch(action) {
-            case 'edit':
-                this.editMarkerProperties();
-                break;
-            case 'delete':
-                this.deleteSelectedMarkers();
-                break;
-            case 'color':
-                this.changeMarkerColor();
-                break;
-        }
-        this.hideContextMenu();
-    }
-
-    editMarkerProperties() {
-        if (this.selectedMarkers.size === 1) {
-            this.showMarkerProperties();
-            document.getElementById('markerTitle').focus();
-        }
-    }
-
-    changeMarkerColor() {
-        const newColor = prompt('Enter new color (hex format):', '#6366f1');
-        if (newColor) {
-            this.saveState();
-            this.selectedMarkers.forEach(markerId => {
-                const marker = this.markers.find(m => m.id === markerId);
-                if (marker) {
-                    marker.color = newColor;
-                    this.renderMarker(marker);
-                }
-            });
-            this.updateMarkerList();
-        }
-    }
-
-    showExportOptions() {
-        if (this.markers.length === 0) {
-            this.showStatus('Add at least one marker before exporting', 'error');
-            return;
-        }
-
-        const modal = document.getElementById('exportModal');
-        modal.style.display = 'flex';
-
-        // Reset selections
-        modal.querySelectorAll('.export-option').forEach(option => {
-            option.classList.remove('selected');
-        });
-        modal.querySelector('.export-option[data-type="2d"]').classList.add('selected');
-    }
-
-    hideExportModal() {
-        const modal = document.getElementById('exportModal');
-        modal.style.display = 'none';
-    }
-
-    handleExportConfirm() {
-        const selectedOption = document.querySelector('.export-option.selected');
-        if (!selectedOption) return;
-
-        const exportType = selectedOption.dataset.type;
-        this.hideExportModal();
-
-        if (exportType === 'vr') {
-            this.exportVRProject();
-        } else {
-            this.export2DProject();
-        }
-    }
-
-    export2DProject() {
-        const projectData = this.getProjectData();
-        const htmlContent = this.generateStandaloneHTML(projectData);
-        
-        HTMLExporter.download(htmlContent, 'interactive-image-2d.html');
-        this.showStatus('2D HTML file downloaded successfully!', 'success');
-    }
-
-    exportVRProject() {
-        const projectData = this.getProjectData();
-        const htmlContent = this.generateVRHTML(projectData);
-        
-        HTMLExporter.download(htmlContent, 'interactive-image-vr.html');
-        this.showStatus('VR 360° HTML file downloaded successfully! Open in browser and use VR headset!', 'success');
-    }
-
-    saveState() {
-        this.undoStack.push({
-            markers: JSON.parse(JSON.stringify(this.markers)),
-            selectedMarkers: new Set(this.selectedMarkers)
-        });
-        this.redoStack = [];
-        this.updateUndoRedoButtons();
-    }
-
-    undo() {
-        if (this.undoStack.length === 0) return;
-
-        this.redoStack.push({
-            markers: JSON.parse(JSON.stringify(this.markers)),
-            selectedMarkers: new Set(this.selectedMarkers)
-        });
-
-        const state = this.undoStack.pop();
-        this.restoreState(state);
-    }
-
-    redo() {
-        if (this.redoStack.length === 0) return;
-
-        this.undoStack.push({
-            markers: JSON.parse(JSON.stringify(this.markers)),
-            selectedMarkers: new Set(this.selectedMarkers)
-        });
-
-        const state = this.redoStack.pop();
-        this.restoreState(state);
-    }
-
-    restoreState(state) {
-        this.markers = JSON.parse(JSON.stringify(state.markers));
-        this.selectedMarkers = new Set(state.selectedMarkers);
-        
-        document.querySelectorAll('.marker').forEach(marker => marker.remove());
-        this.markers.forEach(marker => this.renderMarker(marker));
-        this.updateMarkerSelection();
-        this.updateMarkerList();
-        this.updateUndoRedoButtons();
-
-        if (this.selectedMarkers.size === 1) {
-            this.showMarkerProperties();
-        } else {
-            this.hideMarkerProperties();
-        }
-    }
-
-    updateUndoRedoButtons() {
-        document.getElementById('undoBtn').disabled = this.undoStack.length === 0;
-        document.getElementById('redoBtn').disabled = this.redoStack.length === 0;
-    }
-
-    importProject() {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = '.json,.html';
-        
-        input.onchange = (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                try {
-                    this.saveState();
-                    const content = e.target.result;
-                    
-                    if (file.name.endsWith('.json')) {
-                        const projectData = JSON.parse(content);
-                        this.loadProject(projectData);
-                    } else {
-                        this.loadFromHTML(content);
-                    }
-                    
-                    this.showStatus('Project imported successfully', 'success');
-                } catch (error) {
-                    this.showStatus('Error importing project: ' + error.message, 'error');
-                }
-            };
-            reader.readAsText(file);
-        };
-        
-        input.click();
-    }
-
-    loadProject(projectData) {
-        if (projectData.imageSrc) {
-            this.loadImage(projectData.imageSrc);
-        }
-        if (projectData.markers) {
-            this.markers = projectData.markers;
-            this.selectedMarkers.clear();
-            document.querySelectorAll('.marker').forEach(marker => marker.remove());
-            this.markers.forEach(marker => this.renderMarker(marker));
-            this.updateMarkerList();
-        }
-    }
-
-    loadFromHTML(htmlContent) {
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = htmlContent;
-        
-        const img = tempDiv.querySelector('#mainImage');
-        if (img && img.src) {
-            this.loadImage(img.src);
-        }
-
-        const markers = tempDiv.querySelectorAll('.marker');
-        this.markers = [];
-        markers.forEach(markerEl => {
-            try {
-                const markerData = JSON.parse(markerEl.getAttribute('data-marker').replace(/&apos;/g, "'"));
-                this.markers.push(markerData);
-                this.renderMarker(markerData);
-            } catch (e) {
-                console.warn('Could not parse marker data:', e);
-            }
-        });
-        
-        this.updateMarkerList();
-    }
-
-    getProjectData() {
-        return {
-            imageSrc: this.image.src,
-            markers: this.markers,
-            version: '2.0'
-        };
-    }
-
-    generateStandaloneHTML(projectData) {
-        const markersHTML = projectData.markers.map(marker => {
-            let markerData = marker;
-            if (marker.mediaUrl && !marker.mediaType) {
-                const mediaInfo = MediaURLHandler.getMediaType(marker.mediaUrl);
-                markerData = { ...marker, mediaType: mediaInfo.type };
-            }
-            return `<div class="marker ${marker.type}" 
-                 style="left: ${marker.x}%; top: ${marker.y}%; 
-                        background-color: ${marker.color || this.getDefaultColor(marker.type)};
-                        opacity: ${marker.opacity || 0.8};"
-                 data-marker='${JSON.stringify(markerData).replace(/'/g, "&apos;")}'>
-             </div>`;
-        }).join('');
-
-        return `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interactive Image with Markers</title>
-    <style>
-        ${this.getEnhancedStyles()}
-    </style>
-</head>
-<body>
-    <div class="viewer-container">
-        <div class="image-container">
-            <img id="mainImage" src="${projectData.imageSrc}" alt="Interactive Image">
-            ${markersHTML}
-        </div>
-    </div>
-
-    <div class="popup" id="popup">
-        <div class="popup-content">
-            <button class="close-btn" onclick="closePopup()">&times;</button>
-            <h3 id="popupTitle"></h3>
-            <p id="popupDescription"></p>
-            <a id="popupLink" target="_blank" style="display: none;">Visit Link</a>
-            <div id="popupMedia"></div>
-        </div>
-    </div>
-
-    <script>
-        ${this.getEnhancedMediaScript()}
-    </script>
-</body>
-</html>`;
-    }
-
-    generateVRHTML(projectData) {
-        const markers = projectData.markers.filter(marker => marker.is3D);
-        
-        const markersHTML = markers.map(marker => {
-            return `
-            <a-entity class="vr-marker" 
-                data-marker='${JSON.stringify(marker).replace(/'/g, "&apos;")}'
-                position="${this.sphericalToCartesian(marker.phi, marker.theta, 1.5)}"
-                animation="property: scale; to: 1.2 1.2 1.2; dur: 1000; easing: easeInOutQuad; loop: true; dir: alternate">
-                
-                <a-sphere 
-                    class="hotspot"
-                    radius="0.1" 
-                    color="${marker.color}"
-                    opacity="${marker.opacity || 0.8}"
-                    animation="property: scale; to: 1.5 1.5 1.5; dur: 2000; easing: easeInOutQuad; loop: true; dir: alternate">
-                </a-sphere>
-                
-                <a-text 
-                    value="${marker.title}" 
-                    position="0 0.3 0" 
-                    align="center" 
-                    color="white"
-                    scale="0.8 0.8 0.8">
-                </a-text>
-            </a-entity>`;
-        }).join('');
-
-        return `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>360° VR Experience</title>
-    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
-    <style>
-        body { margin: 0; overflow: hidden; }
-        .info-panel {
-            position: fixed;
-            top: 20px;
-            left: 20px;
-            background: rgba(0,0,0,0.8);
-            color: white;
-            padding: 20px;
-            border-radius: 10px;
-            max-width: 400px;
-            z-index: 1000;
-            display: none;
-        }
-        .close-btn {
-            position: absolute;
-            top: 10px;
-            right: 15px;
-            background: none;
-            border: none;
-            color: white;
-            font-size: 20px;
-            cursor: pointer;
-        }
-        .media-container {
-            margin-top: 15px;
-        }
-        .vr-controls {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0,0,0,0.8);
-            padding: 10px 20px;
-            border-radius: 25px;
-            z-index: 1000;
-        }
-        .vr-controls button {
-            background: rgba(255,255,255,0.2);
-            border: 1px solid rgba(255,255,255,0.3);
-            color: white;
-            padding: 8px 16px;
-            border-radius: 20px;
-            cursor: pointer;
-            margin: 0 5px;
-        }
-    </style>
-</head>
-<body>
-    <a-scene embedded vr-mode-ui="enabled: true" xr-mode-ui="enabled: true">
-        <!-- 360° Image -->
-        <a-sky src="${projectData.imageSrc}" rotation="0 -90 0"></a-sky>
-        
-        <!-- Markers -->
-        ${markersHTML}
-        
-        <!-- Camera -->
-        <a-entity camera look-controls wasd-controls position="0 0 0">
-            <a-entity laser-controls hand="right"></a-entity>
-            <a-entity laser-controls hand="left"></a-entity>
-        </a-entity>
-    </a-scene>
-
-    <!-- Info Panel -->
-    <div class="info-panel" id="infoPanel">
-        <button class="close-btn" onclick="closeInfoPanel()">&times;</button>
-        <h3 id="panelTitle"></h3>
-        <p id="panelDescription"></p>
-        <a id="panelLink" target="_blank" style="display: none;">Visit Link</a>
-        <div class="media-container" id="panelMedia"></div>
-    </div>
-
-    <!-- VR Controls -->
-    <div class="vr-controls">
-        <button onclick="enterVR()">🎮 Enter VR</button>
-        <button onclick="resetView()">🔄 Reset View</button>
-        <button onclick="showAllMarkers()">📍 Show Markers</button>
-    </div>
-
-    <script>
-        document.querySelectorAll('.vr-marker').forEach(marker => {
-            marker.addEventListener('click', function() {
-                const markerData = JSON.parse(this.getAttribute('data-marker'));
-                showMarkerInfo(markerData);
-            });
-        });
-
-        function showMarkerInfo(marker) {
-            document.getElementById('panelTitle').textContent = marker.title;
-            document.getElementById('panelDescription').textContent = marker.description || '';
-            
-            const linkElement = document.getElementById('panelLink');
-            if (marker.url) {
-                linkElement.href = marker.url;
-                linkElement.textContent = 'Visit Link';
-                linkElement.style.display = 'inline-block';
-            } else {
-                linkElement.style.display = 'none';
-            }
-            
-            const mediaElement = document.getElementById('panelMedia');
-            mediaElement.innerHTML = '';
-            
-            if (marker.mediaUrl) {
-                mediaElement.innerHTML = getMediaEmbed(marker.mediaUrl);
-            }
-            
-            document.getElementById('infoPanel').style.display = 'block';
-        }
-
-        function closeInfoPanel() {
-            document.getElementById('infoPanel').style.display = 'none';
-        }
-
-        function enterVR() {
-            const scene = document.querySelector('a-scene');
-            if (scene.hasAttribute('vr-mode-ui')) {
-                scene.enterVR();
-            }
-        }
-
-        function resetView() {
-            const camera = document.querySelector('[camera]');
-            camera.setAttribute('rotation', '0 0 0');
-        }
-
-        function showAllMarkers() {
-            document.querySelectorAll('.vr-marker').forEach(marker => {
-                marker.setAttribute('visible', 'true');
-            });
-        }
-
-        function getMediaEmbed(url) {
-            if (url.includes('youtube.com') || url.includes('youtu.be')) {
-                const videoId = extractYouTubeId(url);
-                if (videoId) {
-                    return '<div style="margin-top: 10px;"><iframe width="100%" height="200" src="https://www.youtube.com/embed/' + videoId + '" frameborder="0" allowfullscreen></iframe></div>';
-                }
-            }
-            if (url.includes('vimeo.com')) {
-                const videoId = extractVimeoId(url);
-                if (videoId) {
-                    return '<div style="margin-top: 10px;"><iframe width="100%" height="200" src="https://player.vimeo.com/video/' + videoId + '" frameborder="0" allowfullscreen></iframe></div>';
-                }
-            }
-            if (url.match(/\\.(mp3|wav|ogg|m4a)(\\?.*)?$/i)) {
-                return '<audio controls style="width: 100%; margin-top: 10px;"><source src="' + url + '"></audio>';
-            }
-            return '<a href="' + url + '" target="_blank" style="display: inline-block; padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 5px; margin-top: 10px;">Open Media</a>';
-        }
-
-        function extractYouTubeId(url) {
-            const patterns = [
-                /(?:https?:\\/\\/)?(?:www\\.)?(?:youtube\\.com\\/watch\\?v=|youtu\\.be\\/)([^&\\n?#]+)/,
-                /(?:https?:\\/\\/)?(?:www\\.)?youtube\\.com\\/embed\\/([^&\\n?#]+)/
-            ];
-            for (const pattern of patterns) {
-                const match = url.match(pattern);
-                if (match && match[1]) return match[1].split('?')[0];
-            }
-            return null;
-        }
-
-        function extractVimeoId(url) {
-            const match = url.match(/(?:https?:\\/\\/)?(?:www\\.)?vimeo\\.com\\/([0-9]+)/);
-            return match ? match[1] : null;
-        }
-
-        document.addEventListener('click', (e) => {
-            if (!document.getElementById('infoPanel').contains(e.target) && 
-                !e.target.closest('.vr-marker')) {
-                closeInfoPanel();
-            }
-        });
-    </script>
-</body>
-</html>`;
-    }
-
-    sphericalToCartesian(phi, theta, radius) {
-        const phiRad = (phi * Math.PI) / 180;
-        const thetaRad = (theta * Math.PI) / 180;
-        
-        const x = -radius * Math.sin(phiRad) * Math.cos(thetaRad);
-        const y = radius * Math.sin(thetaRad);
-        const z = -radius * Math.cos(phiRad) * Math.cos(thetaRad);
-        
-        return `${x} ${y} ${z}`;
-    }
-
-    getDefaultColor(type) {
-        const colors = {
-            info: '#6366f1',
-            link: '#10b981',
-            audio: '#f59e0b',
-            video: '#ef4444'
-        };
-        return colors[type] || '#6366f1';
-    }
-
-    togglePropertyFields(markerType) {
-        document.getElementById('linkUrlGroup').style.display = 
-            markerType === 'link' ? 'block' : 'none';
-        document.getElementById('mediaUrlGroup').style.display = 
-            markerType === 'audio' || markerType === 'video' ? 'block' : 'none';
-    }
-
-    handleDoubleClick(e) {
-        const markerElement = e.target.closest('.marker');
-        if (markerElement) {
-            const markerId = markerElement.dataset.id;
-            this.selectMarker(markerId, false);
-            this.editMarkerProperties();
-        }
-    }
-
-    showStatus(message, type) {
-        const statusEl = document.getElementById('status');
-        statusEl.textContent = message;
-        statusEl.className = `status ${type}`;
-        statusEl.style.display = 'block';
-        
-        setTimeout(() => {
-            statusEl.style.display = 'none';
-        }, 4000);
-    }
-
-    getEnhancedStyles() {
-        return `
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
-            font-family: Arial, sans-serif; 
-            background: #f0f0f0; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            min-height: 100vh; 
-            padding: 20px;
-        }
-        .viewer-container {
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            overflow: hidden;
-            max-width: 90vw;
-        }
-        .image-container {
-            position: relative;
-            display: inline-block;
-        }
-        #mainImage {
-            max-width: 100%;
-            max-height: 80vh;
-            display: block;
-        }
-        .marker {
-            position: absolute;
-            width: 20px;
-            height: 20px;
-            border: 2px solid white;
-            border-radius: 50%;
-            cursor: pointer;
-            transform: translate(-50%, -50%);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 10px;
-            font-weight: bold;
-            color: white;
-        }
-        .marker:hover {
-            transform: translate(-50%, -50%) scale(1.4);
-        }
-        .marker.info::after { content: 'i'; font-size: 10px; }
-        .marker.link::after { content: '🔗'; font-size: 8px; }
-        .marker.audio::after { content: '♪'; font-size: 8px; }
-        .marker.video::after { content: '▶'; font-size: 8px; }
-        .popup {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.8);
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-        .popup-content {
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-            max-width: 500px;
-            width: 90%;
-            max-height: 80vh;
-            overflow-y: auto;
-            position: relative;
-        }
-        .close-btn {
-            position: absolute;
-            top: 10px;
-            right: 15px;
-            background: none;
-            border: none;
-            font-size: 24px;
-            cursor: pointer;
-            color: #666;
-        }
-        .close-btn:hover {
-            color: #000;
-        }
-        .popup h3 {
-            margin-bottom: 10px;
-            color: #333;
-        }
-        .popup p {
-            margin-bottom: 15px;
-            line-height: 1.5;
-            color: #666;
-        }
-        .popup a {
-            display: inline-block;
-            padding: 10px 20px;
-            background: #007bff;
-            color: white;
-            text-decoration: none;
-            border-radius: 5px;
-            margin-right: 10px;
-        }
-        .popup a:hover {
-            background: #0056b3;
-        }
-        audio, video {
-            width: 100%;
-            margin-top: 15px;
-            border-radius: 8px;
-        }
-        iframe {
-            border-radius: 8px;
-            border: none;
-        }`;
-    }
-
-    getEnhancedMediaScript() {
-        return `
-        const MediaHandler = {
-            getEmbedCode: function(url, type) {
-                if (!url) return '';
-                
-                const cleanUrl = this.cleanUrl(url);
-                
-                if (cleanUrl.includes('youtube.com') || cleanUrl.includes('youtu.be')) {
-                    const videoId = this.extractYouTubeId(cleanUrl);
-                    if (videoId) {
-                        return '<iframe width="100%" height="315" src="https://www.youtube.com/embed/' + videoId + '?rel=0&modestbranding=1" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>';
-                    }
-                }
-                
-                if (cleanUrl.includes('vimeo.com')) {
-                    const videoId = this.extractVimeoId(cleanUrl);
-                    if (videoId) {
-                        return '<iframe src="https://player.vimeo.com/video/' + videoId + '?title=0&byline=0&portrait=0" width="100%" height="315" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>';
-                    }
-                }
-                
-                if (cleanUrl.includes('soundcloud.com') || cleanUrl.includes('on.soundcloud.com')) {
-                    if (cleanUrl.includes('on.soundcloud.com')) {
-                        return '<div style="background: #f8fafc; padding: 20px; border-radius: 8px; text-align: center; margin: 10px 0;">' +
-                               '<p style="margin-bottom: 15px; color: #666;">🎵 SoundCloud Audio</p>' +
-                               '<a href="' + url + '" target="_blank" style="display: inline-block; padding: 12px 24px; background: #ff5500; color: white; text-decoration: none; border-radius: 6px; font-weight: bold;">' +
-                               'Listen on SoundCloud</a>' +
-                               '</div>';
-                    }
-                    return '<iframe width="100%" height="166" scrolling="no" frameborder="no" allow="autoplay" src="https://w.soundcloud.com/player/?url=' + encodeURIComponent(cleanUrl) + '&color=%23ff5500&auto_play=false&hide_related=false&show_comments=true&show_user=true&show_reposts=false&show_teaser=true&visual=true"></iframe>';
-                }
-                
-                if (cleanUrl.match(/\\.(mp3|wav|ogg|m4a|aac)(\\?.*)?$/i)) {
-                    return '<audio controls style="width: 100%"><source src="' + cleanUrl + '">Your browser does not support audio.</audio>';
-                }
-                
-                if (cleanUrl.match(/\\.(mp4|webm|ogg|mov|avi)(\\?.*)?$/i)) {
-                    return '<video controls style="width: 100%; max-width: 100%"><source src="' + cleanUrl + '">Your browser does not support video.</video>';
-                }
-                
-                return '<a href="' + cleanUrl + '" target="_blank" style="display: inline-block; padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 4px;">Open Link</a>';
-            },
-            
-            cleanUrl: function(url) {
-                return url
-                    .replace(/\\?si=[^&]+/, '')
-                    .replace(/\\?feature=share/, '')
-                    .replace(/\\?utm_[^&]+/g, '')
-                    .split('?')[0];
-            },
-            
-            extractYouTubeId: function(url) {
-                const patterns = [
-                    /(?:https?:\\/\\/)?(?:www\\.)?(?:youtube\\.com\\/watch\\?v=|youtu\\.be\\/)([^&\\n?#]+)/,
-                    /(?:https?:\\/\\/)?(?:www\\.)?youtube\\.com\\/embed\\/([^&\\n?#]+)/
-                ];
-                
-                for (const pattern of patterns) {
-                    const match = url.match(pattern);
-                    if (match && match[1]) {
-                        return match[1].split('?')[0].split('&')[0];
-                    }
-                }
-                return null;
-            },
-            
-            extractVimeoId: function(url) {
-                const match = url.match(/(?:https?:\\/\\/)?(?:www\\.)?vimeo\\.com\\/([0-9]+)/);
-                return match ? match[1] : null;
-            }
-        };
-
-        function closePopup() {
-            document.getElementById('popup').style.display = 'none';
-        }
-
-        document.querySelectorAll('.marker').forEach(marker => {
-            marker.addEventListener('click', function(e) {
-                e.stopPropagation();
-                const markerData = JSON.parse(this.getAttribute('data-marker'));
-                showMarkerInfo(markerData);
-            });
-        });
-
-        function showMarkerInfo(marker) {
-            document.getElementById('popupTitle').textContent = marker.title || 'Marker';
-            document.getElementById('popupDescription').textContent = marker.description || '';
-            
-            const linkElement = document.getElementById('popupLink');
-            if (marker.type === 'link' && marker.url) {
-                linkElement.href = marker.url;
-                linkElement.textContent = 'Visit Link';
-                linkElement.style.display = 'inline-block';
-            } else {
-                linkElement.style.display = 'none';
-            }
-            
-            const mediaElement = document.getElementById('popupMedia');
-            mediaElement.innerHTML = '';
-            
-            if ((marker.type === 'audio' || marker.type === 'video') && marker.mediaUrl) {
-                mediaElement.innerHTML = MediaHandler.getEmbedCode(marker.mediaUrl, marker.type);
-            }
-            
-            document.getElementById('popup').style.display = 'flex';
-        }
-
-        document.getElementById('popup').addEventListener('click', function(e) {
-            if (e.target === this) {
-                closePopup();
-            }
-        });
-
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                closePopup();
-            }
-        });
-    `;
+    
+    .image-container {
+        min-height: 500px;
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    new EnhancedImageMarkerEditor();
-});
+@media (max-width: 768px) {
+    body {
+        padding: 16px;
+    }
+    
+    header {
+        padding: 20px;
+    }
+    
+    .controls {
+        gap: 8px;
+    }
+    
+    .controls input, .controls select, .controls button {
+        padding: 8px 12px;
+        font-size: 13px;
+    }
+    
+    .opacity-control {
+        padding: 6px 10px;
+    }
+}
+
+/* Custom scrollbar */
+.marker-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.marker-list::-webkit-scrollbar-track {
+    background: #f1f5f9;
+}
+
+.marker-list::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+}
+
+.marker-list::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* Enhanced scrollbar for dark theme */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(30, 30, 30, 0.5);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, #6366f1, #4f46e5);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, #4f46e5, #4338ca);
+}
