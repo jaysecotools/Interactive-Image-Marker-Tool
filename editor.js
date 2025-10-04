@@ -1193,19 +1193,13 @@ class EnhancedImageMarkerEditor {
 
     generateStandaloneHTML(projectData) {
         const markersHTML = projectData.markers.map(marker => {
-            let markerData = { ...marker };
-            // Ensure media type is detected
-            if (marker.mediaUrl && !marker.mediaType) {
-                const mediaInfo = MediaURLHandler.getMediaType(marker.mediaUrl);
-                markerData = { ...marker, mediaType: mediaInfo.type };
-            }
-            
-            const escapedData = JSON.stringify(markerData).replace(/'/g, "&apos;");
+            const escapedData = JSON.stringify(marker).replace(/'/g, "&apos;");
             return `<div class="marker ${marker.type}" 
                  style="left: ${marker.x}%; top: ${marker.y}%; 
                         background-color: ${marker.color || this.getDefaultColor(marker.type)};
                         opacity: ${marker.opacity || 0.8};"
                  data-marker='${escapedData}'
+                 onclick="showMarkerInfo(this)"
                  title="${this.escapeHtml(marker.title)}">
              </div>`;
         }).join('');
@@ -1217,7 +1211,144 @@ class EnhancedImageMarkerEditor {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Interactive Image with Markers</title>
     <style>
-        ${this.getEnhancedStyles()}
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; 
+            background: #1a1a1a; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            min-height: 100vh; 
+            padding: 20px;
+            color: #333;
+        }
+        .viewer-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            overflow: hidden;
+            max-width: 90vw;
+            max-height: 90vh;
+        }
+        .image-container {
+            position: relative;
+            display: inline-block;
+            background: #f8f9fa;
+        }
+        #mainImage {
+            max-width: 100%;
+            max-height: 80vh;
+            display: block;
+        }
+        .marker {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border: 2px solid white;
+            border-radius: 50%;
+            cursor: pointer;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: bold;
+            color: white;
+        }
+        .marker:hover {
+            transform: translate(-50%, -50%) scale(1.4);
+            z-index: 100;
+        }
+        .marker.info::after { content: 'i'; font-size: 10px; }
+        .marker.link::after { content: '🔗'; font-size: 8px; }
+        .marker.audio::after { content: '♪'; font-size: 8px; }
+        .marker.video::after { content: '▶'; font-size: 8px; }
+        .popup {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .popup-content {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+        .close-btn {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+            padding: 5px;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .close-btn:hover {
+            background: #f0f0f0;
+            color: #000;
+        }
+        .popup h3 {
+            margin-bottom: 10px;
+            color: #333;
+            font-size: 1.5em;
+        }
+        .popup p {
+            margin-bottom: 15px;
+            line-height: 1.5;
+            color: #666;
+        }
+        .popup a {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #6366f1;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            margin-right: 10px;
+            transition: background 0.3s ease;
+        }
+        .popup a:hover {
+            background: #4f46e5;
+        }
+        audio, video {
+            width: 100%;
+            margin-top: 15px;
+            border-radius: 8px;
+        }
+        iframe {
+            border-radius: 8px;
+            border: none;
+        }
+        @media (max-width: 768px) {
+            .viewer-container {
+                max-width: 95vw;
+            }
+            .popup-content {
+                padding: 20px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -1239,7 +1370,110 @@ class EnhancedImageMarkerEditor {
     </div>
 
     <script>
-        ${this.getEnhancedMediaScript()}
+        function showMarkerInfo(markerElement) {
+            const markerData = JSON.parse(markerElement.getAttribute('data-marker'));
+            
+            document.getElementById('popupTitle').textContent = markerData.title || 'Marker';
+            document.getElementById('popupDescription').textContent = markerData.description || '';
+            
+            const linkElement = document.getElementById('popupLink');
+            if (markerData.url) {
+                linkElement.href = markerData.url;
+                linkElement.textContent = 'Visit Link';
+                linkElement.style.display = 'inline-block';
+            } else {
+                linkElement.style.display = 'none';
+            }
+            
+            const mediaElement = document.getElementById('popupMedia');
+            mediaElement.innerHTML = '';
+            
+            if (markerData.mediaUrl) {
+                mediaElement.innerHTML = getMediaEmbed(markerData.mediaUrl);
+            }
+            
+            document.getElementById('popup').style.display = 'flex';
+        }
+
+        function closePopup() {
+            document.getElementById('popup').style.display = 'none';
+        }
+
+        function getMediaEmbed(url) {
+            if (!url) return '';
+            
+            // YouTube
+            if (url.includes('youtube.com') || url.includes('youtu.be')) {
+                const videoId = extractYouTubeId(url);
+                if (videoId) {
+                    return '<div style="margin-top: 10px;"><iframe width="100%" height="315" src="https://www.youtube.com/embed/' + videoId + '?rel=0&modestbranding=1" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>';
+                }
+            }
+            
+            // Vimeo
+            if (url.includes('vimeo.com')) {
+                const videoId = extractVimeoId(url);
+                if (videoId) {
+                    return '<div style="margin-top: 10px;"><iframe width="100%" height="315" src="https://player.vimeo.com/video/' + videoId + '?title=0&byline=0&portrait=0" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe></div>';
+                }
+            }
+            
+            // SoundCloud
+            if (url.includes('soundcloud.com') || url.includes('on.soundcloud.com')) {
+                if (url.includes('on.soundcloud.com')) {
+                    return '<div style="background: #f8fafc; padding: 20px; border-radius: 8px; text-align: center; margin: 10px 0;">' +
+                           '<p style="margin-bottom: 15px; color: #666;">🎵 SoundCloud Audio</p>' +
+                           '<a href="' + url + '" target="_blank" rel="noopener" style="display: inline-block; padding: 12px 24px; background: #ff5500; color: white; text-decoration: none; border-radius: 6px; font-weight: bold;">' +
+                           'Listen on SoundCloud</a>' +
+                           '</div>';
+                }
+                return '<iframe width="100%" height="166" scrolling="no" frameborder="no" allow="autoplay" src="https://w.soundcloud.com/player/?url=' + encodeURIComponent(url) + '&color=%23ff5500&auto_play=false&hide_related=false&show_comments=true&show_user=true&show_reposts=false&show_teaser=true&visual=true"></iframe>';
+            }
+            
+            // Audio files
+            if (url.match(/\\.(mp3|wav|ogg|m4a|aac)(\\?.*)?$/i)) {
+                return '<audio controls style="width: 100%; margin-top: 10px;"><source src="' + url + '">Your browser does not support audio.</audio>';
+            }
+            
+            // Video files
+            if (url.match(/\\.(mp4|webm|ogg|mov|avi)(\\?.*)?$/i)) {
+                return '<video controls style="width: 100%; max-width: 100%; margin-top: 10px;"><source src="' + url + '">Your browser does not support video.</video>';
+            }
+            
+            // Default link
+            return '<a href="' + url + '" target="_blank" rel="noopener" style="display: inline-block; padding: 10px 20px; background: #6366f1; color: white; text-decoration: none; border-radius: 5px; margin-top: 10px;">Open Media</a>';
+        }
+
+        function extractYouTubeId(url) {
+            const patterns = [
+                /(?:https?:\\/\\/)?(?:www\\.)?(?:youtube\\.com\\/watch\\?v=|youtu\\.be\\/)([^&\\n?#]+)/,
+                /(?:https?:\\/\\/)?(?:www\\.)?youtube\\.com\\/embed\\/([^&\\n?#]+)/
+            ];
+            for (const pattern of patterns) {
+                const match = url.match(pattern);
+                if (match && match[1]) return match[1].split('?')[0];
+            }
+            return null;
+        }
+
+        function extractVimeoId(url) {
+            const match = url.match(/(?:https?:\\/\\/)?(?:www\\.)?vimeo\\.com\\/([0-9]+)/);
+            return match ? match[1] : null;
+        }
+
+        // Close popup when clicking outside
+        document.getElementById('popup').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closePopup();
+            }
+        });
+
+        // Keyboard controls
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closePopup();
+            }
+        });
     </script>
 </body>
 </html>`;
@@ -1745,297 +1979,6 @@ class EnhancedImageMarkerEditor {
         } else if (newColor) {
             this.showStatus('Invalid color format. Please use hex format (#RRGGBB).', 'error');
         }
-    }
-
-    getEnhancedStyles() {
-        return `
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; 
-            background: #1a1a1a; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            min-height: 100vh; 
-            padding: 20px;
-            color: #333;
-        }
-        .viewer-container {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            overflow: hidden;
-            max-width: 90vw;
-            max-height: 90vh;
-        }
-        .image-container {
-            position: relative;
-            display: inline-block;
-            background: #f8f9fa;
-        }
-        #mainImage {
-            max-width: 100%;
-            max-height: 80vh;
-            display: block;
-        }
-        .marker {
-            position: absolute;
-            width: 20px;
-            height: 20px;
-            border: 2px solid white;
-            border-radius: 50%;
-            cursor: pointer;
-            transform: translate(-50%, -50%);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 10px;
-            font-weight: bold;
-            color: white;
-        }
-        .marker:hover {
-            transform: translate(-50%, -50%) scale(1.4);
-            z-index: 100;
-        }
-        .marker.info::after { content: 'i'; font-size: 10px; }
-        .marker.link::after { content: '🔗'; font-size: 8px; }
-        .marker.audio::after { content: '♪'; font-size: 8px; }
-        .marker.video::after { content: '▶'; font-size: 8px; }
-        .popup {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.8);
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-        .popup-content {
-            background: white;
-            padding: 30px;
-            border-radius: 12px;
-            max-width: 500px;
-            width: 90%;
-            max-height: 80vh;
-            overflow-y: auto;
-            position: relative;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
-        }
-        .close-btn {
-            position: absolute;
-            top: 10px;
-            right: 15px;
-            background: none;
-            border: none;
-            font-size: 24px;
-            cursor: pointer;
-            color: #666;
-            padding: 5px;
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .close-btn:hover {
-            background: #f0f0f0;
-            color: #000;
-        }
-        .popup h3 {
-            margin-bottom: 10px;
-            color: #333;
-            font-size: 1.5em;
-        }
-        .popup p {
-            margin-bottom: 15px;
-            line-height: 1.5;
-            color: #666;
-        }
-        .popup a {
-            display: inline-block;
-            padding: 10px 20px;
-            background: #6366f1;
-            color: white;
-            text-decoration: none;
-            border-radius: 6px;
-            margin-right: 10px;
-            transition: background 0.3s ease;
-        }
-        .popup a:hover {
-            background: #4f46e5;
-        }
-        audio, video {
-            width: 100%;
-            margin-top: 15px;
-            border-radius: 8px;
-        }
-        iframe {
-            border-radius: 8px;
-            border: none;
-        }
-        @media (max-width: 768px) {
-            .viewer-container {
-                max-width: 95vw;
-            }
-            .popup-content {
-                padding: 20px;
-            }
-        }`;
-    }
-
-    getEnhancedMediaScript() {
-        return `
-        const MediaHandler = {
-            getEmbedCode: function(url, type) {
-                if (!url) return '';
-                
-                try {
-                    const cleanUrl = this.cleanUrl(url);
-                    
-                    // YouTube
-                    if (cleanUrl.includes('youtube.com') || cleanUrl.includes('youtu.be')) {
-                        const videoId = this.extractYouTubeId(cleanUrl);
-                        if (videoId) {
-                            return '<iframe width="100%" height="315" src="https://www.youtube.com/embed/' + videoId + '?rel=0&modestbranding=1" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>';
-                        }
-                    }
-                    
-                    // Vimeo
-                    if (cleanUrl.includes('vimeo.com')) {
-                        const videoId = this.extractVimeoId(cleanUrl);
-                        if (videoId) {
-                            return '<iframe src="https://player.vimeo.com/video/' + videoId + '?title=0&byline=0&portrait=0" width="100%" height="315" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>';
-                        }
-                    }
-                    
-                    // SoundCloud
-                    if (cleanUrl.includes('soundcloud.com') || cleanUrl.includes('on.soundcloud.com')) {
-                        if (cleanUrl.includes('on.soundcloud.com')) {
-                            return '<div style="background: #f8fafc; padding: 20px; border-radius: 8px; text-align: center; margin: 10px 0;">' +
-                                   '<p style="margin-bottom: 15px; color: #666;">🎵 SoundCloud Audio</p>' +
-                                   '<a href="' + url + '" target="_blank" rel="noopener" style="display: inline-block; padding: 12px 24px; background: #ff5500; color: white; text-decoration: none; border-radius: 6px; font-weight: bold;">' +
-                                   'Listen on SoundCloud</a>' +
-                                   '</div>';
-                        }
-                        return '<iframe width="100%" height="166" scrolling="no" frameborder="no" allow="autoplay" src="https://w.soundcloud.com/player/?url=' + encodeURIComponent(cleanUrl) + '&color=%23ff5500&auto_play=false&hide_related=false&show_comments=true&show_user=true&show_reposts=false&show_teaser=true&visual=true"></iframe>';
-                    }
-                    
-                    // Audio files
-                    if (cleanUrl.match(/\\.(mp3|wav|ogg|m4a|aac)(\\\\?.*)?$/i)) {
-                        return '<audio controls style="width: 100%"><source src="' + cleanUrl + '">Your browser does not support audio.</audio>';
-                    }
-                    
-                    // Video files
-                    if (cleanUrl.match(/\\.(mp4|webm|ogg|mov|avi)(\\\\?.*)?$/i)) {
-                        return '<video controls style="width: 100%; max-width: 100%"><source src="' + cleanUrl + '">Your browser does not support video.</video>';
-                    }
-                    
-                    // Default external link
-                    return '<a href="' + cleanUrl + '" target="_blank" rel="noopener" style="display: inline-block; padding: 10px 20px; background: #6366f1; color: white; text-decoration: none; border-radius: 4px;">Open Link</a>';
-                } catch (error) {
-                    console.error('Error generating embed code:', error);
-                    return '<div style="color: #ef4444; padding: 10px; background: #fef2f2; border-radius: 4px;">Error loading media</div>';
-                }
-            },
-            
-            cleanUrl: function(url) {
-                return url
-                    .replace(/\\\\?si=[^&]+/, '')
-                    .replace(/\\\\?feature=share/, '')
-                    .replace(/\\\\?utm_[^&]+/g, '')
-                    .split('?')[0];
-            },
-            
-            extractYouTubeId: function(url) {
-                const patterns = [
-                    /(?:https?:\\\\/\\\\/)?(?:www\\\\.)?(?:youtube\\\\.com\\\\/watch\\\\?v=|youtu\\\\.be\\\\/)([^&\\\\n?#]+)/,
-                    /(?:https?:\\\\/\\\\/)?(?:www\\\\.)?youtube\\\\.com\\\\/embed\\\\/([^&\\\\n?#]+)/
-                ];
-                
-                for (const pattern of patterns) {
-                    const match = url.match(pattern);
-                    if (match && match[1]) {
-                        return match[1].split('?')[0].split('&')[0];
-                    }
-                }
-                return null;
-            },
-            
-            extractVimeoId: function(url) {
-                const match = url.match(/(?:https?:\\\\/\\\\/)?(?:www\\\\.)?vimeo\\\\.com\\\\/([0-9]+)/);
-                return match ? match[1] : null;
-            }
-        };
-
-        function closePopup() {
-            document.getElementById('popup').style.display = 'none';
-        }
-
-        // Marker click handlers
-        document.querySelectorAll('.marker').forEach(marker => {
-            marker.addEventListener('click', function(e) {
-                e.stopPropagation();
-                const markerData = JSON.parse(this.getAttribute('data-marker'));
-                showMarkerInfo(markerData);
-            });
-        });
-
-        function showMarkerInfo(marker) {
-            document.getElementById('popupTitle').textContent = marker.title || 'Marker';
-            document.getElementById('popupDescription').textContent = marker.description || '';
-            
-            const linkElement = document.getElementById('popupLink');
-            if (marker.type === 'link' && marker.url) {
-                linkElement.href = marker.url;
-                linkElement.textContent = 'Visit Link';
-                linkElement.style.display = 'inline-block';
-            } else {
-                linkElement.style.display = 'none';
-            }
-            
-            const mediaElement = document.getElementById('popupMedia');
-            mediaElement.innerHTML = '';
-            
-            if ((marker.type === 'audio' || marker.type === 'video') && marker.mediaUrl) {
-                mediaElement.innerHTML = MediaHandler.getEmbedCode(marker.mediaUrl, marker.type);
-            }
-            
-            document.getElementById('popup').style.display = 'flex';
-        }
-
-        // Close popup when clicking outside
-        document.getElementById('popup').addEventListener('click', function(e) {
-            if (e.target === this) {
-                closePopup();
-            }
-        });
-
-        // Keyboard controls
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                closePopup();
-            }
-        });
-
-        // Handle marker hover effects
-        document.querySelectorAll('.marker').forEach(marker => {
-            marker.addEventListener('mouseenter', function() {
-                this.style.zIndex = '100';
-            });
-            
-            marker.addEventListener('mouseleave', function() {
-                if (!this.classList.contains('selected')) {
-                    this.style.zIndex = '10';
-                }
-            });
-        });
-    `;
     }
 }
 
