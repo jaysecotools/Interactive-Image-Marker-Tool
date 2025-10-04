@@ -1,8 +1,39 @@
+class HTMLExporter {
+    static download(content, filename) {
+        const blob = new Blob([content], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    static exportJSON(data, filename) {
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+}
+
 class MediaURLHandler {
     static getMediaType(url) {
         if (!url) return { type: 'unknown', embedUrl: '', originalUrl: '' };
 
         try {
+            // Add basic URL format check
+            if (!url.includes('://') && !url.startsWith('//') && !url.startsWith('data:')) {
+                url = 'https://' + url;
+            }
+
             // Ensure URL is properly formatted
             const cleanUrl = this.cleanUrl(url);
             const urlObj = new URL(cleanUrl);
@@ -92,11 +123,19 @@ class MediaURLHandler {
     }
 
     static cleanUrl(url) {
-        return url
-            .replace(/\?si=[^&]+/, '')
-            .replace(/\?feature=share/, '')
-            .replace(/\?utm_[^&]+/g, '')
-            .split('?')[0];
+        // Remove specific tracking parameters but preserve others
+        let cleaned = url
+            .replace(/\?si=[^&]+&?/, '?')
+            .replace(/\?feature=share&?/, '?')
+            .replace(/\?utm_[^&]+&?/g, '?')
+            .replace(/\?&/, '?')
+            .replace(/\?$/, '');
+        
+        // If we removed all parameters, return the base URL
+        if (cleaned.includes('?')) {
+            return cleaned;
+        }
+        return url.split('?')[0];
     }
 
     static getYouTubeEmbedUrl(url) {
@@ -473,9 +512,13 @@ class EnhancedImageMarkerEditor {
                 }
             }
         } else {
-            // Wait for image to load
+            // Wait for image to load with error handling
             this.image.onload = () => {
                 setTimeout(() => this.checkIf360Image(), 100);
+            };
+            this.image.onerror = () => {
+                console.error('Failed to load image');
+                this.showStatus('Failed to load image', 'error');
             };
         }
     }
@@ -486,6 +529,13 @@ class EnhancedImageMarkerEditor {
         // Check if it's an image file
         if (!file.type.startsWith('image/')) {
             this.showStatus('Please upload a valid image file', 'error');
+            return;
+        }
+
+        // Add file size validation
+        const maxSize = 10 * 1024 * 1024; // 10MB
+        if (file.size > maxSize) {
+            this.showStatus('Image too large. Maximum size is 10MB.', 'error');
             return;
         }
 
@@ -805,9 +855,10 @@ class EnhancedImageMarkerEditor {
     }
 
     deleteSelectedMarkers() {
-        if (this.selectedMarkers.size === 0) return;
+        const count = this.selectedMarkers.size;
+        if (count === 0) return;
 
-        if (!confirm(`Delete ${this.selectedMarkers.size} marker(s)?`)) {
+        if (!confirm(`Delete ${count} marker(s)?`)) {
             return;
         }
 
@@ -824,7 +875,7 @@ class EnhancedImageMarkerEditor {
         this.selectedMarkers.clear();
         this.hideMarkerProperties();
         this.updateBulkActions();
-        this.showStatus(`Deleted ${this.selectedMarkers.size} markers`, 'success');
+        this.showStatus(`Deleted ${count} markers`, 'success');
         this.updateMarkerList();
     }
 
