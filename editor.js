@@ -1530,73 +1530,71 @@ class EnhancedImageMarkerEditor {
 </html>`;
     }
 
-    // FIXED VR HTML GENERATION - COMPLETELY REWRITTEN
-    generateVRHTML(projectData) {
-        // Convert all markers to proper 3D coordinates
-        const markers = projectData.markers.map(marker => {
-            // Ensure proper 3D coordinates
-            const phi = marker.phi || this.convertXToPhi(marker.x);
-            const theta = marker.theta || this.convertYToTheta(marker.y);
+// REPLACE the generateVRHTML method with this fixed version:
+generateVRHTML(projectData) {
+    // Convert all markers to proper 3D coordinates
+    const markers = projectData.markers.map(marker => {
+        // Ensure proper 3D coordinates
+        const phi = marker.phi || this.convertXToPhi(marker.x);
+        const theta = marker.theta || this.convertYToTheta(marker.y);
+        
+        return {
+            ...marker,
+            phi: phi,
+            theta: theta,
+            position: this.sphericalToCartesian(phi, theta, 5)
+        };
+    });
+
+    const markersHTML = markers.map(marker => {
+        // Properly escape marker data for HTML embedding
+        const escapedData = JSON.stringify(marker)
+            .replace(/'/g, "&apos;")
+            .replace(/"/g, "&quot;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
+
+        const markerStyle = this.getVRMarkerStyle(marker);
+        
+        return `
+        <a-entity class="vr-marker ${marker.type}-marker clickable" 
+            data-marker='${escapedData}'
+            position="${marker.position}"
+            look-at="#camera">
             
-            return {
-                ...marker,
-                phi: phi,
-                theta: theta,
-                position: this.sphericalToCartesian(phi, theta, 5)
-            };
-        });
-
-        const markersHTML = markers.map(marker => {
-            // Properly escape marker data for HTML embedding
-            const escapedData = JSON.stringify(marker)
-                .replace(/'/g, "&apos;")
-                .replace(/"/g, "&quot;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;");
-
-            const markerStyle = this.getVRMarkerStyle(marker);
+            ${markerStyle.outerRing}
+            ${markerStyle.innerCore}
+            ${markerStyle.icon}
             
-            return `
-            <a-entity class="vr-marker ${marker.type}-marker clickable" 
-                data-marker='${escapedData}'
-                position="${marker.position}"
-                look-at="#camera">
-                
-                ${markerStyle.outerRing}
-                ${markerStyle.innerCore}
-                ${markerStyle.icon}
-                
-                <!-- Title label -->
-                <a-text 
-                    value="${this.escapeHtml(marker.title)}" 
-                    position="0 0.8 0" 
-                    align="center" 
-                    color="white"
-                    scale="1.5 1.5 1.5"
-                    width="3">
-                </a-text>
-                
-                <!-- Type indicator -->
-                <a-text 
-                    value="${markerStyle.typeLabel}" 
-                    position="0 -0.5 0" 
-                    align="center" 
-                    color="${markerStyle.textColor}"
-                    scale="1 1 1"
-                    width="2">
-                </a-text>
-            </a-entity>`;
-        }).join('');
+            <!-- Title label -->
+            <a-text 
+                value="${this.escapeHtml(marker.title)}" 
+                position="0 0.8 0" 
+                align="center" 
+                color="white"
+                scale="1.5 1.5 1.5"
+                width="3">
+            </a-text>
+            
+            <!-- Type indicator -->
+            <a-text 
+                value="${markerStyle.typeLabel}" 
+                position="0 -0.5 0" 
+                align="center" 
+                color="${markerStyle.textColor}"
+                scale="1 1 1"
+                width="2">
+            </a-text>
+        </a-entity>`;
+    }).join('');
 
-        return `<!DOCTYPE html>
+    return `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>360° VR Experience</title>
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/aframe-animation-component@5.1.2/dist/aframe-animation-component.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/aframe-event-set-component@4.2.1/dist/aframe-event-set-component.min.js"></script>
     <style>
         body { 
             margin: 0; 
@@ -1681,51 +1679,42 @@ class EnhancedImageMarkerEditor {
             animation: pulse 2s infinite;
         }
         
-        .marker-inner {
-            animation: rotate 4s infinite linear;
-        }
-        
         @keyframes pulse {
             0% { opacity: 0.6; }
             50% { opacity: 1; }
             100% { opacity: 0.6; }
         }
-        
-        @keyframes rotate {
-            from { transform: rotateY(0deg); }
-            to { transform: rotateY(360deg); }
-        }
     </style>
 </head>
 <body>
     <a-scene 
-        embedded 
-        vr-mode-ui="enabled: true" 
-        xr-mode-ui="enabled: true" 
+        vr-mode-ui="enabled: true"
         loading-screen="dotsColor: #6366f1; backgroundColor: #000"
         cursor="rayOrigin: mouse"
         raycaster="objects: .clickable">
         
-        <!-- 360° Image -->
-        <a-sky src="${projectData.imageSrc}" rotation="0 -90 0"></a-sky>
+        <!-- 360° Image - FIXED: Using a-sky with proper setup -->
+        <a-sky id="sky" src="${projectData.imageSrc}"></a-sky>
         
         <!-- Markers -->
         ${markersHTML}
         
-        <!-- Camera with cursor -->
-        <a-entity id="camera" camera look-controls wasd-controls position="0 0 0">
-            <a-cursor
-                fuse="true"
-                fuse-timeout="1000"
-                animation__click="property: scale; startEvents: click; from: 0.1 0.1 0.1; to: 1 1 1; dur: 150"
-                animation__fusing="property: scale; startEvents: fusing; from: 1 1 1; to: 0.1 0.1 0.1; dur: 1500"
-                raycaster="objects: .clickable">
-            </a-cursor>
+        <!-- Camera with cursor - FIXED: Simplified camera setup -->
+        <a-entity id="camera" position="0 0 0">
+            <a-camera look-controls wasd-controls>
+                <a-cursor
+                    fuse="true"
+                    fuse-timeout="2000"
+                    animation__click="property: scale; startEvents: click; from: 0.1 0.1 0.1; to: 1 1 1; dur: 150"
+                    animation__fusing="property: scale; startEvents: fusing; from: 1 1 1; to: 0.1 0.1 0.1; dur: 1500"
+                    raycaster="objects: .clickable">
+                </a-cursor>
+            </a-camera>
         </a-entity>
         
-        <!-- Lighting -->
-        <a-entity light="type: ambient; color: #CCC; intensity: 0.8"></a-entity>
-        <a-entity light="type: directional; color: #FFF; intensity: 0.8" position="-1 2 1"></a-entity>
+        <!-- Basic lighting -->
+        <a-entity light="type: ambient; color: #888; intensity: 0.8"></a-entity>
+        <a-entity light="type: directional; color: #fff; intensity: 0.5" position="-1 1 1"></a-entity>
     </a-scene>
 
     <!-- Info Panel -->
@@ -1745,22 +1734,17 @@ class EnhancedImageMarkerEditor {
     </div>
 
     <script>
-        // Enhanced marker interaction system
+        // Wait for A-Frame to load
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('VR Scene Loading...');
+            setupMarkerInteractions();
+        });
+
         function setupMarkerInteractions() {
-            console.log('Setting up VR marker interactions for ${markers.length} markers...');
+            console.log('Setting up VR marker interactions...');
             
-            // Wait for A-Frame to load completely
-            const scene = document.querySelector('a-scene');
-            
-            if (scene.hasLoaded) {
-                initInteractions();
-            } else {
-                scene.addEventListener('loaded', initInteractions);
-            }
-            
-            function initInteractions() {
-                console.log('A-Frame scene loaded, initializing marker interactions...');
-                
+            // Wait a bit for A-Frame to fully initialize
+            setTimeout(() => {
                 const markers = document.querySelectorAll('.vr-marker');
                 console.log('Found', markers.length, 'markers in VR scene');
                 
@@ -1771,56 +1755,34 @@ class EnhancedImageMarkerEditor {
                         handleMarkerClick(this);
                     });
                     
-                    // Add mouse enter/leave for hover effects
+                    // Add hover effects
                     marker.addEventListener('mouseenter', function() {
-                        this.setAttribute('animation', 'property: scale; to: 1.2 1.2 1.2; dur: 200');
+                        this.setAttribute('scale', '1.2 1.2 1.2');
                     });
                     
                     marker.addEventListener('mouseleave', function() {
-                        this.setAttribute('animation', 'property: scale; to: 1 1 1; dur: 200');
+                        this.setAttribute('scale', '1 1 1');
                     });
                 });
-                
-                // Handle cursor fusion events
-                const cursor = document.querySelector('a-cursor');
-                if (cursor) {
-                    cursor.addEventListener('fusing', function(event) {
-                        const intersected = event.detail.intersectedEl;
-                        if (intersected && intersected.classList.contains('clickable')) {
-                            console.log('Cursor fused with marker');
-                            handleMarkerClick(intersected);
-                        }
-                    });
-                }
-                
-                console.log('Marker interactions setup complete');
-            }
+            }, 1000);
         }
 
         function handleMarkerClick(markerElement) {
-            if (!markerElement) {
-                console.error('No marker element provided');
-                return;
-            }
+            if (!markerElement) return;
             
             try {
                 const markerData = markerElement.getAttribute('data-marker');
-                if (!markerData) {
-                    console.error('No marker data found');
-                    return;
+                if (markerData) {
+                    const marker = JSON.parse(markerData);
+                    console.log('Showing marker info:', marker.title);
+                    showMarkerInfo(marker);
                 }
-                
-                const marker = JSON.parse(markerData);
-                console.log('Showing marker info:', marker.title);
-                showMarkerInfo(marker);
             } catch (error) {
                 console.error('Error handling marker click:', error);
             }
         }
 
         function showMarkerInfo(marker) {
-            if (!marker) return;
-            
             document.getElementById('panelTitle').textContent = marker.title || 'Untitled Marker';
             document.getElementById('panelDescription').textContent = marker.description || 'No description provided.';
             
@@ -1849,15 +1811,15 @@ class EnhancedImageMarkerEditor {
 
         function enterVR() {
             const scene = document.querySelector('a-scene');
-            if (scene && scene.enterVR) {
+            if (scene.enterVR) {
                 scene.enterVR();
             }
         }
 
         function resetView() {
-            const camera = document.querySelector('[camera]');
+            const camera = document.querySelector('a-camera');
             if (camera) {
-                camera.setAttribute('rotation', {x: 0, y: 0, z: 0});
+                camera.setAttribute('rotation', '0 0 0');
             }
         }
 
@@ -1890,7 +1852,6 @@ class EnhancedImageMarkerEditor {
                 return '<video controls style="width: 100%; max-width: 100%; margin-top: 10px; border-radius: 8px;"><source src="' + url + '">Your browser does not support video.</video>';
             }
             
-            // Default link for unsupported media
             return '<a href="' + url + '" target="_blank" rel="noopener" style="display: inline-block; padding: 10px 20px; background: #6366f1; color: white; text-decoration: none; border-radius: 6px; margin-top: 10px; font-weight: bold;">Open Media</a>';
         }
 
@@ -1911,19 +1872,11 @@ class EnhancedImageMarkerEditor {
             return match ? match[1] : null;
         }
 
-        // Initialize when DOM is ready
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('DOM loaded, setting up VR interactions...');
-            setupMarkerInteractions();
-        });
-
         // Close panel when clicking outside
         document.addEventListener('click', function(e) {
             const panel = document.getElementById('infoPanel');
-            if (panel && panel.style.display === 'block') {
-                if (!panel.contains(e.target) && !e.target.classList.contains('vr-marker')) {
-                    closeInfoPanel();
-                }
+            if (panel && panel.style.display === 'block' && !panel.contains(e.target)) {
+                closeInfoPanel();
             }
         });
 
@@ -1936,7 +1889,7 @@ class EnhancedImageMarkerEditor {
     </script>
 </body>
 </html>`;
-    }
+}
 
     // FIXED: Correct spherical to Cartesian conversion
     sphericalToCartesian(phi, theta, radius = 5) {
