@@ -1504,64 +1504,72 @@ class EnhancedImageMarkerEditor {
 </html>`;
     }
 
-generateVRHTML(projectData) {
-    // Use ALL markers for VR export, convert 2D markers to 3D if needed
-    const markers = projectData.markers.map(marker => ({
-        ...marker,
-        // Ensure 3D coordinates for VR
-        phi: marker.phi || this.convertXToPhi(marker.x),
-        theta: marker.theta || this.convertYToTheta(marker.y)
-    }));
-    
-    const markersHTML = markers.map(marker => {
-        const position = this.sphericalToCartesian(marker.phi, marker.theta, 5);
-        const escapedData = JSON.stringify(marker).replace(/'/g, "&apos;");
+    // FIXED VR HTML GENERATION
+    generateVRHTML(projectData) {
+        // Use ALL markers for VR export, convert 2D markers to 3D if needed
+        const markers = projectData.markers.map(marker => ({
+            ...marker,
+            // Ensure 3D coordinates for VR
+            phi: marker.phi || this.convertXToPhi(marker.x),
+            theta: marker.theta || this.convertYToTheta(marker.y)
+        }));
         
-        return `
-        <a-entity class="vr-marker" 
-            data-marker='${escapedData}'
-            position="${position}"
-            look-at="#camera">
+        const markersHTML = markers.map(marker => {
+            const position = this.sphericalToCartesian(marker.phi, marker.theta, 5);
+            const escapedData = JSON.stringify(marker).replace(/'/g, "&apos;");
             
-            <a-ring 
-                class="hotspot clickable"
-                radius-inner="0.2"
-                radius-outer="0.3"
-                color="${marker.color}"
-                opacity="${marker.opacity || 0.8}"
-                animation="property: rotation; to: 0 0 360; dur: 4000; loop: true; easing: linear"
-                event-set__mouseenter="scale: 1.2 1.2 1.2"
-                event-set__mouseleave="scale: 1 1 1"
-                event-set__click="scale: 0.8 0.8 0.8">
-            </a-ring>
+            // Get marker type styling
+            const markerStyle = this.getVRMarkerStyle(marker);
             
-            <a-sphere
-                class="hotspot-core clickable"
-                radius="0.1"
-                color="${marker.color}"
-                opacity="0.9"
-                animation="property: scale; to: 1.5 1.5 1.5; dur: 2000; easing: easeInOutQuad; loop: true; dir: alternate"
-                event-set__mouseenter="scale: 1.2 1.2 1.2"
-                event-set__mouseleave="scale: 1 1 1">
-            </a-sphere>
-            
-            <a-text 
-                value="${this.escapeHtml(marker.title)}" 
-                position="0 0.8 0" 
-                align="center" 
-                color="white"
-                scale="1.5 1.5 1.5">
-            </a-text>
-        </a-entity>`;
-    }).join('');
+            return `
+            <a-entity class="vr-marker ${marker.type}-marker clickable" 
+                data-marker='${escapedData}'
+                position="${position}"
+                look-at="#camera">
+                
+                <!-- Main marker visual with type-specific styling -->
+                <a-entity class="marker-visual"
+                    animation="property: rotation; to: 0 360 0; dur: 8000; loop: true; easing: linear"
+                    event-set__mouseenter="scale: 1.3 1.3 1.3"
+                    event-set__mouseleave="scale: 1 1 1">
+                    
+                    ${markerStyle.outerRing}
+                    ${markerStyle.innerCore}
+                    ${markerStyle.icon}
+                    
+                </a-entity>
+                
+                <!-- Title label -->
+                <a-text 
+                    value="${this.escapeHtml(marker.title)}" 
+                    position="0 0.8 0" 
+                    align="center" 
+                    color="white"
+                    scale="1.5 1.5 1.5"
+                    width="3">
+                </a-text>
+                
+                <!-- Type indicator -->
+                <a-text 
+                    value="${markerStyle.typeLabel}" 
+                    position="0 -0.5 0" 
+                    align="center" 
+                    color="${markerStyle.textColor}"
+                    scale="1 1 1"
+                    width="2">
+                </a-text>
+            </a-entity>`;
+        }).join('');
 
-    return `<!DOCTYPE html>
+        return `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>360° VR Experience</title>
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/aframe-animation-component@5.1.2/dist/aframe-animation-component.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/aframe-event-set-component@4.2.1/dist/aframe-event-set-component.min.js"></script>
     <style>
         body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; }
         .info-panel {
@@ -1631,6 +1639,17 @@ generateVRHTML(projectData) {
             background: rgba(99, 102, 241, 1);
             transform: translateY(-2px);
         }
+        
+        /* VR Marker Styles */
+        .info-marker .marker-icon { color: #6366f1; }
+        .link-marker .marker-icon { color: #10b981; }
+        .audio-marker .marker-icon { color: #f59e0b; }
+        .video-marker .marker-icon { color: #ef4444; }
+        
+        .clickable {
+            cursor: pointer;
+        }
+        
         a-scene { width: 100vw; height: 100vh; }
     </style>
 </head>
@@ -1653,9 +1672,9 @@ generateVRHTML(projectData) {
         <a-entity id="camera" camera look-controls wasd-controls position="0 0 0">
             <a-cursor
                 fuse="true"
-                fuse-timeout="500"
-                animation__click="property: scale; startEvents: click; from: 0.8 0.8 0.8; to: 1 1 1; dur: 150"
-                animation__fusing="property: scale; startEvents: fusing; from: 1 1 1; to: 0.8 0.8 0.8; dur: 500"
+                fuse-timeout="1000"
+                animation__click="property: scale; startEvents: click; from: 0.1 0.1 0.1; to: 1 1 1; dur: 150"
+                animation__fusing="property: scale; startEvents: fusing; from: 1 1 1; to: 0.1 0.1 0.1; dur: 1500"
                 raycaster="objects: .clickable">
             </a-cursor>
         </a-entity>
@@ -1670,7 +1689,7 @@ generateVRHTML(projectData) {
         <button class="close-btn" onclick="closeInfoPanel()" aria-label="Close info panel">&times;</button>
         <h3 id="panelTitle" style="margin-bottom: 15px; color: #6366f1;">Marker Info</h3>
         <p id="panelDescription" style="margin-bottom: 15px; line-height: 1.5;"></p>
-        <a id="panelLink" target="_blank" rel="noopener" style="display: none; color: #10b981; text-decoration: none; font-weight: bold;">🔗 Visit Link</a>
+        <a id="panelLink" target="_blank" rel="noopener" style="display: none; padding: 8px 16px; background: #10b981; color: white; text-decoration: none; border-radius: 4px; margin-right: 10px;">🔗 Visit Link</a>
         <div class="media-container" id="panelMedia"></div>
     </div>
 
@@ -1682,31 +1701,70 @@ generateVRHTML(projectData) {
     </div>
 
     <script>
-        // Simple and reliable marker interaction
+        // Enhanced marker interaction system
         function setupMarkerInteractions() {
             const scene = document.querySelector('a-scene');
             
-            // Listen for clicks on the scene
-            scene.addEventListener('click', function(event) {
-                const clickedElement = event.detail.intersectedEl;
+            // Wait for scene to load
+            if (scene.hasLoaded) {
+                initInteractions();
+            } else {
+                scene.addEventListener('loaded', initInteractions);
+            }
+            
+            function initInteractions() {
+                console.log('Setting up VR marker interactions...');
                 
-                if (clickedElement && clickedElement.classList.contains('clickable')) {
-                    // Find the parent marker entity
-                    let markerEntity = clickedElement;
-                    while (markerEntity && !markerEntity.classList.contains('vr-marker')) {
-                        markerEntity = markerEntity.parentElement;
-                    }
+                // Add click handlers to all markers
+                document.querySelectorAll('.vr-marker').forEach(marker => {
+                    // Make the entire marker entity clickable
+                    marker.addEventListener('click', function(event) {
+                        console.log('Marker clicked');
+                        handleMarkerClick(this);
+                    });
                     
-                    if (markerEntity && markerEntity.getAttribute('data-marker')) {
-                        try {
-                            const markerData = JSON.parse(markerEntity.getAttribute('data-marker'));
-                            showMarkerInfo(markerData);
-                        } catch (e) {
-                            console.log('Error parsing marker data:', e);
+                    // Add hover effects
+                    marker.addEventListener('mouseenter', function() {
+                        this.setAttribute('animation', 'property: scale; to: 1.1 1.1 1.1; dur: 200');
+                    });
+                    
+                    marker.addEventListener('mouseleave', function() {
+                        this.setAttribute('animation', 'property: scale; to: 1 1 1; dur: 200');
+                    });
+                });
+                
+                // Also handle cursor fusion events
+                const cursor = document.querySelector('a-cursor');
+                if (cursor) {
+                    cursor.addEventListener('fusing', function(event) {
+                        const intersected = event.detail.intersectedEl;
+                        if (intersected && intersected.classList.contains('clickable')) {
+                            handleMarkerClick(findParentMarker(intersected));
                         }
-                    }
+                    });
                 }
-            });
+            }
+        }
+
+        function findParentMarker(element) {
+            let current = element;
+            while (current && !current.classList.contains('vr-marker')) {
+                current = current.parentElement;
+                if (!current) return null;
+            }
+            return current;
+        }
+
+        function handleMarkerClick(markerEntity) {
+            if (!markerEntity) return;
+            
+            try {
+                const markerData = JSON.parse(markerEntity.getAttribute('data-marker'));
+                console.log('Showing marker info:', markerData);
+                showMarkerInfo(markerData);
+            } catch (e) {
+                console.error('Error parsing marker data:', e);
+            }
         }
 
         function showMarkerInfo(marker) {
@@ -1717,7 +1775,7 @@ generateVRHTML(projectData) {
             if (marker.url && marker.url.trim() !== '') {
                 linkElement.href = marker.url;
                 linkElement.textContent = '🔗 Visit Link';
-                linkElement.style.display = 'block';
+                linkElement.style.display = 'inline-block';
             } else {
                 linkElement.style.display = 'none';
             }
@@ -1802,20 +1860,14 @@ generateVRHTML(projectData) {
 
         // Initialize when A-Frame is ready
         document.addEventListener('DOMContentLoaded', function() {
-            const scene = document.querySelector('a-scene');
-            
-            if (scene.hasLoaded) {
-                setupMarkerInteractions();
-            } else {
-                scene.addEventListener('loaded', setupMarkerInteractions);
-            }
+            setupMarkerInteractions();
         });
 
-        // Close panel when clicking outside (with safety check)
+        // Close panel when clicking outside
         document.addEventListener('click', function(e) {
             const panel = document.getElementById('infoPanel');
             if (panel && panel.style.display === 'block') {
-                if (!panel.contains(e.target) && !e.target.classList.contains('clickable')) {
+                if (!panel.contains(e.target) && !e.target.classList.contains('vr-marker')) {
                     closeInfoPanel();
                 }
             }
@@ -1830,20 +1882,56 @@ generateVRHTML(projectData) {
     </script>
 </body>
 </html>`;
-}
-sphericalToCartesian(phi, theta, radius = 5) {
-    // Convert to radians
-    const phiRad = (phi * Math.PI) / 180;
-    const thetaRad = (theta * Math.PI) / 180;
-    
-    // Correct spherical to cartesian conversion for A-Frame (Y-up coordinate system)
-    // Note: A-Frame uses Y-up, so we need to adjust the coordinates
-    const x = radius * Math.cos(thetaRad) * Math.sin(phiRad);
-    const y = radius * Math.sin(thetaRad);
-    const z = -radius * Math.cos(thetaRad) * Math.cos(phiRad);
-    
-    return `${x.toFixed(3)} ${y.toFixed(3)} ${z.toFixed(3)}`;
-}
+    }
+
+    // NEW METHOD: VR Marker Style Helper
+    getVRMarkerStyle(marker) {
+        const styles = {
+            info: {
+                outerRing: `<a-ring class="marker-outer" radius-inner="0.25" radius-outer="0.35" color="#6366f1" opacity="${marker.opacity || 0.8}" segments-theta="32"></a-ring>`,
+                innerCore: `<a-sphere class="marker-inner" radius="0.15" color="#6366f1" opacity="0.9"></a-sphere>`,
+                icon: `<a-text class="marker-icon" value="i" align="center" color="white" position="0 0 0.01" scale="2 2 2" width="1"></a-text>`,
+                typeLabel: "INFO",
+                textColor: "#6366f1"
+            },
+            link: {
+                outerRing: `<a-ring class="marker-outer" radius-inner="0.25" radius-outer="0.35" color="#10b981" opacity="${marker.opacity || 0.8}" segments-theta="32"></a-ring>`,
+                innerCore: `<a-sphere class="marker-inner" radius="0.15" color="#10b981" opacity="0.9"></a-sphere>`,
+                icon: `<a-text class="marker-icon" value="🔗" align="center" color="white" position="0 0 0.01" scale="1.5 1.5 1.5" width="1"></a-text>`,
+                typeLabel: "LINK",
+                textColor: "#10b981"
+            },
+            audio: {
+                outerRing: `<a-ring class="marker-outer" radius-inner="0.25" radius-outer="0.35" color="#f59e0b" opacity="${marker.opacity || 0.8}" segments-theta="32"></a-ring>`,
+                innerCore: `<a-sphere class="marker-inner" radius="0.15" color="#f59e0b" opacity="0.9"></a-sphere>`,
+                icon: `<a-text class="marker-icon" value="♪" align="center" color="black" position="0 0 0.01" scale="1.5 1.5 1.5" width="1"></a-text>`,
+                typeLabel: "AUDIO",
+                textColor: "#f59e0b"
+            },
+            video: {
+                outerRing: `<a-ring class="marker-outer" radius-inner="0.25" radius-outer="0.35" color="#ef4444" opacity="${marker.opacity || 0.8}" segments-theta="32"></a-ring>`,
+                innerCore: `<a-sphere class="marker-inner" radius="0.15" color="#ef4444" opacity="0.9"></a-sphere>`,
+                icon: `<a-text class="marker-icon" value="▶" align="center" color="white" position="0 0 0.01" scale="1.5 1.5 1.5" width="1"></a-text>`,
+                typeLabel: "VIDEO",
+                textColor: "#ef4444"
+            }
+        };
+        
+        return styles[marker.type] || styles.info;
+    }
+
+    sphericalToCartesian(phi, theta, radius = 5) {
+        // Convert to radians
+        const phiRad = (phi * Math.PI) / 180;
+        const thetaRad = (theta * Math.PI) / 180;
+        
+        // Correct spherical to cartesian conversion for A-Frame (Y-up coordinate system)
+        const x = radius * Math.sin(thetaRad) * Math.cos(phiRad);
+        const y = radius * Math.cos(thetaRad);
+        const z = radius * Math.sin(thetaRad) * Math.sin(phiRad);
+        
+        return `${x.toFixed(3)} ${y.toFixed(3)} ${z.toFixed(3)}`;
+    }
 
     getDefaultColor(type) {
         const colors = {
