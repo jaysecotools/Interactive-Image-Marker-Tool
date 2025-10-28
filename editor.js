@@ -226,6 +226,32 @@ class MediaURLHandler {
     }
 }
 
+class HTMLExporter {
+    static download(content, filename) {
+        const blob = new Blob([content], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    static exportJSON(data, filename) {
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+}
+
 class EnhancedImageMarkerEditor {
     constructor() {
         this.image = document.getElementById('mainImage');
@@ -1504,40 +1530,41 @@ class EnhancedImageMarkerEditor {
 </html>`;
     }
 
-    // FIXED VR HTML GENERATION
+    // FIXED VR HTML GENERATION - COMPLETELY REWRITTEN
     generateVRHTML(projectData) {
-        // Use ALL markers for VR export, convert 2D markers to 3D if needed
-        const markers = projectData.markers.map(marker => ({
-            ...marker,
-            // Ensure 3D coordinates for VR
-            phi: marker.phi || this.convertXToPhi(marker.x),
-            theta: marker.theta || this.convertYToTheta(marker.y)
-        }));
-        
-        const markersHTML = markers.map(marker => {
-            const position = this.sphericalToCartesian(marker.phi, marker.theta, 5);
-            const escapedData = JSON.stringify(marker).replace(/'/g, "&apos;");
+        // Convert all markers to proper 3D coordinates
+        const markers = projectData.markers.map(marker => {
+            // Ensure proper 3D coordinates
+            const phi = marker.phi || this.convertXToPhi(marker.x);
+            const theta = marker.theta || this.convertYToTheta(marker.y);
             
-            // Get marker type styling
+            return {
+                ...marker,
+                phi: phi,
+                theta: theta,
+                position: this.sphericalToCartesian(phi, theta, 5)
+            };
+        });
+
+        const markersHTML = markers.map(marker => {
+            // Properly escape marker data for HTML embedding
+            const escapedData = JSON.stringify(marker)
+                .replace(/'/g, "&apos;")
+                .replace(/"/g, "&quot;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;");
+
             const markerStyle = this.getVRMarkerStyle(marker);
             
             return `
             <a-entity class="vr-marker ${marker.type}-marker clickable" 
                 data-marker='${escapedData}'
-                position="${position}"
+                position="${marker.position}"
                 look-at="#camera">
                 
-                <!-- Main marker visual with type-specific styling -->
-                <a-entity class="marker-visual"
-                    animation="property: rotation; to: 0 360 0; dur: 8000; loop: true; easing: linear"
-                    event-set__mouseenter="scale: 1.3 1.3 1.3"
-                    event-set__mouseleave="scale: 1 1 1">
-                    
-                    ${markerStyle.outerRing}
-                    ${markerStyle.innerCore}
-                    ${markerStyle.icon}
-                    
-                </a-entity>
+                ${markerStyle.outerRing}
+                ${markerStyle.innerCore}
+                ${markerStyle.icon}
                 
                 <!-- Title label -->
                 <a-text 
@@ -1571,7 +1598,12 @@ class EnhancedImageMarkerEditor {
     <script src="https://cdn.jsdelivr.net/npm/aframe-animation-component@5.1.2/dist/aframe-animation-component.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/aframe-event-set-component@4.2.1/dist/aframe-event-set-component.min.js"></script>
     <style>
-        body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; }
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            font-family: Arial, sans-serif; 
+            background: #000;
+        }
         .info-panel {
             position: fixed;
             top: 20px;
@@ -1641,16 +1673,28 @@ class EnhancedImageMarkerEditor {
         }
         
         /* VR Marker Styles */
-        .info-marker .marker-icon { color: #6366f1; }
-        .link-marker .marker-icon { color: #10b981; }
-        .audio-marker .marker-icon { color: #f59e0b; }
-        .video-marker .marker-icon { color: #ef4444; }
-        
-        .clickable {
+        .vr-marker {
             cursor: pointer;
         }
         
-        a-scene { width: 100vw; height: 100vh; }
+        .marker-outer {
+            animation: pulse 2s infinite;
+        }
+        
+        .marker-inner {
+            animation: rotate 4s infinite linear;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; }
+            100% { opacity: 0.6; }
+        }
+        
+        @keyframes rotate {
+            from { transform: rotateY(0deg); }
+            to { transform: rotateY(360deg); }
+        }
     </style>
 </head>
 <body>
@@ -1660,7 +1704,7 @@ class EnhancedImageMarkerEditor {
         xr-mode-ui="enabled: true" 
         loading-screen="dotsColor: #6366f1; backgroundColor: #000"
         cursor="rayOrigin: mouse"
-        raycaster="objects: .clickable; far: 20;">
+        raycaster="objects: .clickable">
         
         <!-- 360° Image -->
         <a-sky src="${projectData.imageSrc}" rotation="0 -90 0"></a-sky>
@@ -1703,9 +1747,11 @@ class EnhancedImageMarkerEditor {
     <script>
         // Enhanced marker interaction system
         function setupMarkerInteractions() {
+            console.log('Setting up VR marker interactions for ${markers.length} markers...');
+            
+            // Wait for A-Frame to load completely
             const scene = document.querySelector('a-scene');
             
-            // Wait for scene to load
             if (scene.hasLoaded) {
                 initInteractions();
             } else {
@@ -1713,19 +1759,21 @@ class EnhancedImageMarkerEditor {
             }
             
             function initInteractions() {
-                console.log('Setting up VR marker interactions...');
+                console.log('A-Frame scene loaded, initializing marker interactions...');
                 
-                // Add click handlers to all markers
-                document.querySelectorAll('.vr-marker').forEach(marker => {
-                    // Make the entire marker entity clickable
+                const markers = document.querySelectorAll('.vr-marker');
+                console.log('Found', markers.length, 'markers in VR scene');
+                
+                markers.forEach((marker, index) => {
+                    // Add click event
                     marker.addEventListener('click', function(event) {
-                        console.log('Marker clicked');
+                        console.log('Marker clicked:', index);
                         handleMarkerClick(this);
                     });
                     
-                    // Add hover effects
+                    // Add mouse enter/leave for hover effects
                     marker.addEventListener('mouseenter', function() {
-                        this.setAttribute('animation', 'property: scale; to: 1.1 1.1 1.1; dur: 200');
+                        this.setAttribute('animation', 'property: scale; to: 1.2 1.2 1.2; dur: 200');
                     });
                     
                     marker.addEventListener('mouseleave', function() {
@@ -1733,41 +1781,46 @@ class EnhancedImageMarkerEditor {
                     });
                 });
                 
-                // Also handle cursor fusion events
+                // Handle cursor fusion events
                 const cursor = document.querySelector('a-cursor');
                 if (cursor) {
                     cursor.addEventListener('fusing', function(event) {
                         const intersected = event.detail.intersectedEl;
                         if (intersected && intersected.classList.contains('clickable')) {
-                            handleMarkerClick(findParentMarker(intersected));
+                            console.log('Cursor fused with marker');
+                            handleMarkerClick(intersected);
                         }
                     });
                 }
+                
+                console.log('Marker interactions setup complete');
             }
         }
 
-        function findParentMarker(element) {
-            let current = element;
-            while (current && !current.classList.contains('vr-marker')) {
-                current = current.parentElement;
-                if (!current) return null;
+        function handleMarkerClick(markerElement) {
+            if (!markerElement) {
+                console.error('No marker element provided');
+                return;
             }
-            return current;
-        }
-
-        function handleMarkerClick(markerEntity) {
-            if (!markerEntity) return;
             
             try {
-                const markerData = JSON.parse(markerEntity.getAttribute('data-marker'));
-                console.log('Showing marker info:', markerData);
-                showMarkerInfo(markerData);
-            } catch (e) {
-                console.error('Error parsing marker data:', e);
+                const markerData = markerElement.getAttribute('data-marker');
+                if (!markerData) {
+                    console.error('No marker data found');
+                    return;
+                }
+                
+                const marker = JSON.parse(markerData);
+                console.log('Showing marker info:', marker.title);
+                showMarkerInfo(marker);
+            } catch (error) {
+                console.error('Error handling marker click:', error);
             }
         }
 
         function showMarkerInfo(marker) {
+            if (!marker) return;
+            
             document.getElementById('panelTitle').textContent = marker.title || 'Untitled Marker';
             document.getElementById('panelDescription').textContent = marker.description || 'No description provided.';
             
@@ -1858,8 +1911,9 @@ class EnhancedImageMarkerEditor {
             return match ? match[1] : null;
         }
 
-        // Initialize when A-Frame is ready
+        // Initialize when DOM is ready
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM loaded, setting up VR interactions...');
             setupMarkerInteractions();
         });
 
@@ -1884,53 +1938,56 @@ class EnhancedImageMarkerEditor {
 </html>`;
     }
 
-    // NEW METHOD: VR Marker Style Helper
-    getVRMarkerStyle(marker) {
-        const styles = {
-            info: {
-                outerRing: `<a-ring class="marker-outer" radius-inner="0.25" radius-outer="0.35" color="#6366f1" opacity="${marker.opacity || 0.8}" segments-theta="32"></a-ring>`,
-                innerCore: `<a-sphere class="marker-inner" radius="0.15" color="#6366f1" opacity="0.9"></a-sphere>`,
-                icon: `<a-text class="marker-icon" value="i" align="center" color="white" position="0 0 0.01" scale="2 2 2" width="1"></a-text>`,
-                typeLabel: "INFO",
-                textColor: "#6366f1"
-            },
-            link: {
-                outerRing: `<a-ring class="marker-outer" radius-inner="0.25" radius-outer="0.35" color="#10b981" opacity="${marker.opacity || 0.8}" segments-theta="32"></a-ring>`,
-                innerCore: `<a-sphere class="marker-inner" radius="0.15" color="#10b981" opacity="0.9"></a-sphere>`,
-                icon: `<a-text class="marker-icon" value="🔗" align="center" color="white" position="0 0 0.01" scale="1.5 1.5 1.5" width="1"></a-text>`,
-                typeLabel: "LINK",
-                textColor: "#10b981"
-            },
-            audio: {
-                outerRing: `<a-ring class="marker-outer" radius-inner="0.25" radius-outer="0.35" color="#f59e0b" opacity="${marker.opacity || 0.8}" segments-theta="32"></a-ring>`,
-                innerCore: `<a-sphere class="marker-inner" radius="0.15" color="#f59e0b" opacity="0.9"></a-sphere>`,
-                icon: `<a-text class="marker-icon" value="♪" align="center" color="black" position="0 0 0.01" scale="1.5 1.5 1.5" width="1"></a-text>`,
-                typeLabel: "AUDIO",
-                textColor: "#f59e0b"
-            },
-            video: {
-                outerRing: `<a-ring class="marker-outer" radius-inner="0.25" radius-outer="0.35" color="#ef4444" opacity="${marker.opacity || 0.8}" segments-theta="32"></a-ring>`,
-                innerCore: `<a-sphere class="marker-inner" radius="0.15" color="#ef4444" opacity="0.9"></a-sphere>`,
-                icon: `<a-text class="marker-icon" value="▶" align="center" color="white" position="0 0 0.01" scale="1.5 1.5 1.5" width="1"></a-text>`,
-                typeLabel: "VIDEO",
-                textColor: "#ef4444"
-            }
-        };
-        
-        return styles[marker.type] || styles.info;
-    }
-
+    // FIXED: Correct spherical to Cartesian conversion
     sphericalToCartesian(phi, theta, radius = 5) {
         // Convert to radians
         const phiRad = (phi * Math.PI) / 180;
         const thetaRad = (theta * Math.PI) / 180;
         
-        // Correct spherical to cartesian conversion for A-Frame (Y-up coordinate system)
-        const x = radius * Math.sin(thetaRad) * Math.cos(phiRad);
+        // Correct spherical to Cartesian for A-Frame (Y-up coordinate system)
+        const x = -radius * Math.sin(thetaRad) * Math.sin(phiRad);
         const y = radius * Math.cos(thetaRad);
-        const z = radius * Math.sin(thetaRad) * Math.sin(phiRad);
+        const z = -radius * Math.sin(thetaRad) * Math.cos(phiRad);
         
         return `${x.toFixed(3)} ${y.toFixed(3)} ${z.toFixed(3)}`;
+    }
+
+    // FIXED: VR Marker styling
+    getVRMarkerStyle(marker) {
+        const baseColor = marker.color || this.getDefaultColor(marker.type);
+        
+        const styles = {
+            info: {
+                outerRing: `<a-ring class="marker-outer" radius-inner="0.2" radius-outer="0.3" color="${baseColor}" opacity="${marker.opacity || 0.8}"></a-ring>`,
+                innerCore: `<a-sphere class="marker-inner" radius="0.15" color="${baseColor}" opacity="0.9"></a-sphere>`,
+                icon: `<a-text class="marker-icon" value="i" align="center" color="white" position="0 0 0.16" scale="2 2 2"></a-text>`,
+                typeLabel: "INFO",
+                textColor: baseColor
+            },
+            link: {
+                outerRing: `<a-ring class="marker-outer" radius-inner="0.2" radius-outer="0.3" color="${baseColor}" opacity="${marker.opacity || 0.8}"></a-ring>`,
+                innerCore: `<a-sphere class="marker-inner" radius="0.15" color="${baseColor}" opacity="0.9"></a-sphere>`,
+                icon: `<a-text class="marker-icon" value="🔗" align="center" color="white" position="0 0 0.16" scale="1.5 1.5 1.5"></a-text>`,
+                typeLabel: "LINK",
+                textColor: baseColor
+            },
+            audio: {
+                outerRing: `<a-ring class="marker-outer" radius-inner="0.2" radius-outer="0.3" color="${baseColor}" opacity="${marker.opacity || 0.8}"></a-ring>`,
+                innerCore: `<a-sphere class="marker-inner" radius="0.15" color="${baseColor}" opacity="0.9"></a-sphere>`,
+                icon: `<a-text class="marker-icon" value="♪" align="center" color="white" position="0 0 0.16" scale="1.5 1.5 1.5"></a-text>`,
+                typeLabel: "AUDIO",
+                textColor: baseColor
+            },
+            video: {
+                outerRing: `<a-ring class="marker-outer" radius-inner="0.2" radius-outer="0.3" color="${baseColor}" opacity="${marker.opacity || 0.8}"></a-ring>`,
+                innerCore: `<a-sphere class="marker-inner" radius="0.15" color="${baseColor}" opacity="0.9"></a-sphere>`,
+                icon: `<a-text class="marker-icon" value="▶" align="center" color="white" position="0 0 0.16" scale="1.5 1.5 1.5"></a-text>`,
+                typeLabel: "VIDEO",
+                textColor: baseColor
+            }
+        };
+        
+        return styles[marker.type] || styles.info;
     }
 
     getDefaultColor(type) {
@@ -2166,6 +2223,7 @@ class EnhancedImageMarkerEditor {
 document.addEventListener('DOMContentLoaded', () => {
     try {
         new EnhancedImageMarkerEditor();
+        console.log('Enhanced Image Marker Editor initialized successfully!');
     } catch (error) {
         console.error('Failed to initialize editor:', error);
         // Show error to user
