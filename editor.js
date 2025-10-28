@@ -1892,18 +1892,20 @@ generateVRHTML(projectData) {
 }
 
     // FIXED: Correct spherical to Cartesian conversion
-    sphericalToCartesian(phi, theta, radius = 5) {
-        // Convert to radians
-        const phiRad = (phi * Math.PI) / 180;
-        const thetaRad = (theta * Math.PI) / 180;
-        
-        // Correct spherical to Cartesian for A-Frame (Y-up coordinate system)
-        const x = -radius * Math.sin(thetaRad) * Math.sin(phiRad);
-        const y = radius * Math.cos(thetaRad);
-        const z = -radius * Math.sin(thetaRad) * Math.cos(phiRad);
-        
-        return `${x.toFixed(3)} ${y.toFixed(3)} ${z.toFixed(3)}`;
-    }
+// REPLACE the sphericalToCartesian method with this version:
+sphericalToCartesian(phi, theta, radius = 5) {
+    // Convert to radians
+    const phiRad = (phi * Math.PI) / 180;
+    const thetaRad = (theta * Math.PI) / 180;
+    
+    // Correct spherical to Cartesian for A-Frame (Y-up coordinate system)
+    // phi: longitude (0-360), theta: latitude (-90 to 90)
+    const x = radius * Math.cos(thetaRad) * Math.sin(phiRad);
+    const y = radius * Math.sin(thetaRad);
+    const z = -radius * Math.cos(thetaRad) * Math.cos(phiRad);
+    
+    return `${x.toFixed(3)} ${y.toFixed(3)} ${z.toFixed(3)}`;
+}
 
     // FIXED: VR Marker styling
     getVRMarkerStyle(marker) {
