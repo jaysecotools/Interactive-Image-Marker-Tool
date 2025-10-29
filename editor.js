@@ -1,3 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>360° Image Marker Editor</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #6366f1;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --bg-primary: #1a1a1a;
+            --bg-secondary: #2d2d2d;
+            --bg-tertiary: #3d3d3d;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0a0;
+            --text-muted: #666666;
+            --border-color: #404040;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar Styles */
+        .sidebar {
+            width: 350px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .sidebar-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .sidebar-section {
+            margin-bottom: 25px;
+        }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Main Content Styles */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .toolbar {
+            background: var(--bg-secondary);
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .editor-area {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: var(--bg-primary);
+        }
+
+        /* Button Styles */
+        .btn {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 10px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .btn:hover {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        .btn-success {
+            background: var(--success-color);
+            border-color: var(--success-color);
+        }
+
+        .btn-danger {
+            background: var(--danger-color);
+            border-color: var(--danger-color);
+        }
+
+        /* Image Container Styles */
+        .image-container {
+            position: relative;
+            display: inline-block;
+            max-width: 100%;
+            max-height: 100%;
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        #mainImage {
+            max-width: 100%;
+            max-height: 80vh;
+            display: none;
+        }
+
+        .placeholder {
+            padding: 60px 40px;
+            text-align: center;
+            color: var(--text-muted);
+        }
+
+        .placeholder .material-icons {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        /* Marker Styles */
+        .marker {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border: 2px solid white;
+            border-radius: 50%;
+            cursor: pointer;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: bold;
+            color: white;
+        }
+
+        .marker:hover {
+            transform: translate(-50%, -50%) scale(1.4);
+            z-index: 100;
+        }
+
+        .marker.selected {
+            border-color: #ffd700;
+            box-shadow: 0 0 0 2px #ffd700, 0 2px 8px rgba(0,0,0,0.3);
+        }
+
+        .marker.dragging {
+            z-index: 1000;
+            cursor: grabbing;
+        }
+
+        .marker.info::after { content: 'i'; }
+        .marker.link::after { content: '🔗'; font-size: 8px; }
+        .marker.audio::after { content: '♪'; font-size: 8px; }
+        .marker.video::after { content: '▶'; font-size: 8px; }
+
+        .marker.vr-hotspot::before {
+            content: '';
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            border: 2px solid #00ff00;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; }
+        }
+
+        /* Form Styles */
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 10px 12px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .color-input {
+            height: 40px;
+            padding: 4px;
+        }
+
+        /* Status Styles */
+        .status {
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            display: none;
+        }
+
+        .status.success {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid var(--success-color);
+            color: var(--success-color);
+        }
+
+        .status.error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid var(--danger-color);
+            color: var(--danger-color);
+        }
+
+        .status.warning {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid var(--warning-color);
+            color: var(--warning-color);
+        }
+
+        /* Marker List Styles */
+        .marker-list {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+        }
+
+        .marker-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .marker-item:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .marker-item.selected {
+            background: rgba(99, 102, 241, 0.1);
+            border-left: 3px solid var(--primary-color);
+        }
+
+        .marker-icon {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            margin-right: 12px;
+            border: 2px solid white;
+        }
+
+        .marker-info {
+            flex: 1;
+        }
+
+        .marker-title {
+            font-weight: 500;
+            margin-bottom: 2px;
+        }
+
+        .marker-type {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        /* Bulk Actions */
+        .bulk-actions {
+            background: var(--bg-tertiary);
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            display: none;
+        }
+
+        /* Image Type Indicator */
+        .image-type-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            z-index: 10;
+            display: none;
+        }
+
+        .image-type-indicator.vr-360 {
+            background: rgba(99, 102, 241, 0.2);
+            color: var(--primary-color);
+            border: 1px solid var(--primary-color);
+        }
+
+        .image-type-indicator.standard {
+            background: rgba(160, 160, 160, 0.2);
+            color: var(--text-secondary);
+            border: 1px solid var(--text-secondary);
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: var(--bg-secondary);
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .export-options {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+            margin: 20px 0;
+        }
+
+        .export-option {
+            background: var(--bg-tertiary);
+            padding: 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s ease;
+        }
+
+        .export-option:hover {
+            border-color: var(--primary-color);
+        }
+
+        .export-option.selected {
+            border-color: var(--primary-color);
+            background: rgba(99, 102, 241, 0.1);
+        }
+
+        .export-option h4 {
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        .export-option p {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        /* Context Menu */
+        .context-menu {
+            position: fixed;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 8px 0;
+            z-index: 1000;
+            display: none;
+            min-width: 160px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        .context-item {
+            padding: 10px 16px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: background 0.2s ease;
+        }
+
+        .context-item:hover {
+            background: var(--bg-tertiary);
+        }
+
+        /* Preview Styles */
+        .preview {
+            background: var(--bg-tertiary);
+            padding: 12px;
+            border-radius: 6px;
+            margin-top: 8px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .preview a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+
+        .preview a:hover {
+            text-decoration: underline;
+        }
+
+        /* VR Mode Button */
+        .vr-active {
+            background: var(--success-color) !important;
+            border-color: var(--success-color) !important;
+        }
+
+        /* Utility Classes */
+        .hidden {
+            display: none !important;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .mt-2 { margin-top: 8px; }
+        .mt-4 { margin-top: 16px; }
+        .mb-2 { margin-bottom: 8px; }
+        .mb-4 { margin-bottom: 16px; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .app-container {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                height: auto;
+            }
+            
+            .toolbar {
+                flex-wrap: wrap;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2>360° Marker Editor</h2>
+                <div class="status" id="status"></div>
+            </div>
+            
+            <div class="sidebar-content">
+                <!-- Image Upload Section -->
+                <div class="sidebar-section">
+                    <h3 class="section-title">Image</h3>
+                    <input type="file" id="imageUpload" accept="image/*" class="btn">
+                    <div class="image-type-indicator" id="imageTypeIndicator"></div>
+                </div>
+
+                <!-- Marker Tools Section -->
+                <div class="sidebar-section">
+                    <h3 class="section-title">Marker Tools</h3>
+                    <div class="form-group">
+                        <label for="markerType">Marker Type</label>
+                        <select id="markerType">
+                            <option value="info">Info</option>
+                            <option value="link">Link</option>
+                            <option value="audio">Audio</option>
+                            <option value="video">Video</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="markerColor">Default Color</label>
+                        <input type="color" id="markerColor" value="#6366f1" class="color-input">
+                    </div>
+                    <div class="form-group">
+                        <label for="markerOpacity">Default Opacity</label>
+                        <input type="range" id="markerOpacity" min="0.1" max="1" step="0.1" value="0.8">
+                    </div>
+                    <button class="btn btn-primary" id="vrModeBtn">
+                        <span class="material-icons">view_in_ar</span> 2D Mode
+                    </button>
+                </div>
+
+                <!-- Marker Properties Section -->
+                <div class="sidebar-section">
+                    <h3 class="section-title">Marker Properties</h3>
+                    <div id="markerProperties" style="display: none;">
+                        <div class="form-group">
+                            <label for="markerTitle">Title</label>
+                            <input type="text" id="markerTitle" placeholder="Enter marker title">
+                        </div>
+                        <div class="form-group">
+                            <label for="markerDescription">Description</label>
+                            <textarea id="markerDescription" placeholder="Enter marker description"></textarea>
+                        </div>
+                        
+                        <div class="form-group" id="linkUrlGroup" style="display: none;">
+                            <label for="markerUrl">Link URL</label>
+                            <input type="url" id="markerUrl" placeholder="https://example.com">
+                            <div class="preview" id="linkPreview"></div>
+                        </div>
+                        
+                        <div class="form-group" id="mediaUrlGroup" style="display: none;">
+                            <label for="markerMediaUrl">Media URL</label>
+                            <input type="url" id="markerMediaUrl" placeholder="YouTube, Vimeo, SoundCloud, or direct MP4/MP3 links...">
+                            <div class="preview" id="mediaPreview"></div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="markerCustomColor">Marker Color</label>
+                            <input type="color" id="markerCustomColor" value="#6366f1" class="color-input">
+                        </div>
+                        <div class="form-group">
+                            <label for="markerCustomOpacity">Marker Opacity</label>
+                            <input type="range" id="markerCustomOpacity" min="0.1" max="1" step="0.1" value="0.8">
+                        </div>
+
+                        <div class="form-group">
+                            <button class="btn btn-success" id="saveMarker">
+                                <span class="material-icons">save</span> Save Properties
+                            </button>
+                            <button class="btn btn-danger" id="deleteMarker">
+                                <span class="material-icons">delete</span> Delete Marker
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Marker List Section -->
+                <div class="sidebar-section">
+                    <h3 class="section-title">Markers</h3>
+                    <div class="form-group">
+                        <input type="text" id="searchMarkers" placeholder="Search markers...">
+                    </div>
+                    <div class="marker-list" id="markerList">
+                        <div class="no-markers">No markers yet. Click on the image to add markers.</div>
+                    </div>
+                </div>
+
+                <!-- Bulk Actions -->
+                <div class="bulk-actions" id="bulkActions">
+                    <div class="section-title" id="bulkCount">2 markers selected</div>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn" id="bulkColor">
+                            <span class="material-icons">palette</span> Color
+                        </button>
+                        <button class="btn btn-danger" id="bulkDelete">
+                            <span class="material-icons">delete</span> Delete
+                        </button>
+                        <button class="btn" id="bulkClear">
+                            <span class="material-icons">clear</span> Clear
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Actions Section -->
+                <div class="sidebar-section">
+                    <h3 class="section-title">Actions</h3>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <button class="btn" id="exportBtn">
+                            <span class="material-icons">download</span> Export Project
+                        </button>
+                        <button class="btn" id="importBtn">
+                            <span class="material-icons">upload</span> Import Project
+                        </button>
+                        <button class="btn" id="clearMarkers">
+                            <span class="material-icons">clear_all</span> Clear All Markers
+                        </button>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn" id="undoBtn" disabled>
+                                <span class="material-icons">undo</span> Undo
+                            </button>
+                            <button class="btn" id="redoBtn" disabled>
+                                <span class="material-icons">redo</span> Redo
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="toolbar">
+                <div class="section-title">Editor</div>
+            </div>
+            <div class="editor-area">
+                <div class="image-container" id="imageContainer">
+                    <img id="mainImage" alt="360° Image">
+                    <div class="placeholder">
+                        <span class="material-icons">add_photo_alternate</span>
+                        <p>Upload a 360° image to get started</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Modal -->
+    <div class="modal" id="exportModal">
+        <div class="modal-content">
+            <h3 style="margin-bottom: 20px;">Export Project</h3>
+            <p style="color: var(--text-secondary); margin-bottom: 20px;">
+                Choose how you want to export your interactive image:
+            </p>
+            
+            <div class="export-options">
+                <div class="export-option" data-type="2d">
+                    <h4>📱 2D Interactive HTML</h4>
+                    <p>Standard web page with clickable markers</p>
+                </div>
+                <div class="export-option" data-type="vr">
+                    <h4>🌐 VR 360° HTML</h4>
+                    <p>Immersive 360° experience for VR headsets</p>
+                </div>
+                <div class="export-option" data-type="json">
+                    <h4>💾 JSON Project File</h4>
+                    <p>Backup file to import later</p>
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button class="btn btn-primary" id="confirmExport">Export</button>
+                <button class="btn" id="cancelExport">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Context Menu -->
+    <div class="context-menu" id="contextMenu">
+        <div class="context-item" data-action="edit">
+            <span class="material-icons">edit</span> Edit
+        </div>
+        <div class="context-item" data-action="color">
+            <span class="material-icons">palette</span> Change Color
+        </div>
+        <div class="context-item" data-action="delete">
+            <span class="material-icons">delete</span> Delete
+        </div>
+    </div>
+
+    <script>
 class MediaURLHandler {
     static getMediaType(url) {
         if (!url) return { type: 'unknown', embedUrl: '', originalUrl: '' };
@@ -1495,71 +2200,70 @@ class EnhancedImageMarkerEditor {
 </html>`;
     }
 
-// REPLACE the generateVRHTML method with this dual-compatible version:
-generateVRHTML(projectData) {
-    const markers = projectData.markers.map(marker => {
-        const phi = marker.phi || this.convertXToPhi(marker.x);
-        const theta = marker.theta || this.convertYToTheta(marker.y);
-        
-        return {
-            ...marker,
-            phi: phi,
-            theta: theta,
-            position: this.sphericalToCartesian(phi, theta, 5)
-        };
-    });
+    generateVRHTML(projectData) {
+        const markers = projectData.markers.map(marker => {
+            const phi = marker.phi || this.convertXToPhi(marker.x);
+            const theta = marker.theta || this.convertYToTheta(marker.y);
+            
+            return {
+                ...marker,
+                phi: phi,
+                theta: theta,
+                position: this.sphericalToCartesian(phi, theta, 5)
+            };
+        });
 
-    const markersHTML = markers.map(marker => {
-        const escapedData = JSON.stringify(marker)
-            .replace(/'/g, "&apos;")
-            .replace(/"/g, "&quot;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;");
+        const markersHTML = markers.map(marker => {
+            const escapedData = JSON.stringify(marker)
+                .replace(/'/g, "&apos;")
+                .replace(/"/g, "&quot;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;");
 
-        const markerStyle = this.getVRMarkerStyle(marker);
-        
-        return `
-        <a-entity class="interactive-marker" 
-            data-marker='${escapedData}'
-            position="${marker.position}"
-            animation="property: rotation; to: 0 360 0; loop: true; dur: 10000">
+            const markerStyle = this.getVRMarkerStyle(marker);
             
-            <!-- Clickable area for both mouse and VR -->
-            <a-sphere 
-                class="clickable-target"
-                radius="0.4"
-                color="#0000FF" 
-                opacity="0.01"
-                material="transparent: true; opacity: 0.01"
-                event-set__mouseenter="scale: 1.1 1.1 1.1"
-                event-set__mouseleave="scale: 1 1 1">
-            </a-sphere>
-            
-            ${markerStyle.outerRing}
-            ${markerStyle.innerCore}
-            ${markerStyle.icon}
-            
-            <a-text 
-                value="${this.escapeHtml(marker.title)}" 
-                position="0 0.8 0" 
-                align="center" 
-                color="white"
-                scale="1.5 1.5 1.5"
-                width="3">
-            </a-text>
-            
-            <a-text 
-                value="${markerStyle.typeLabel}" 
-                position="0 -0.5 0" 
-                align="center" 
-                color="${markerStyle.textColor}"
-                scale="1 1 1"
-                width="2">
-            </a-text>
-        </a-entity>`;
-    }).join('');
+            return `
+            <a-entity class="interactive-marker" 
+                data-marker='${escapedData}'
+                position="${marker.position}"
+                animation="property: rotation; to: 0 360 0; loop: true; dur: 10000">
+                
+                <!-- Clickable area for both mouse and VR -->
+                <a-sphere 
+                    class="clickable-target"
+                    radius="0.4"
+                    color="#0000FF" 
+                    opacity="0.01"
+                    material="transparent: true; opacity: 0.01"
+                    event-set__mouseenter="scale: 1.1 1.1 1.1"
+                    event-set__mouseleave="scale: 1 1 1">
+                </a-sphere>
+                
+                ${markerStyle.outerRing}
+                ${markerStyle.innerCore}
+                ${markerStyle.icon}
+                
+                <a-text 
+                    value="${this.escapeHtml(marker.title)}" 
+                    position="0 0.8 0" 
+                    align="center" 
+                    color="white"
+                    scale="1.5 1.5 1.5"
+                    width="3">
+                </a-text>
+                
+                <a-text 
+                    value="${markerStyle.typeLabel}" 
+                    position="0 -0.5 0" 
+                    align="center" 
+                    color="${markerStyle.textColor}"
+                    scale="1 1 1"
+                    width="2">
+                </a-text>
+            </a-entity>`;
+        }).join('');
 
-    return `<!DOCTYPE html>
+        return `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -1582,14 +2286,6 @@ generateVRHTML(projectData) {
         }
         .close-btn:hover { background: rgba(255,255,255,0.1); border-radius: 50%; }
         .media-container { margin-top: 15px; }
-        
-        /* VR controller styles */
-        .vr-controller {
-            display: none;
-        }
-        
-        /* Make click targets visible during development */
-        /* .clickable-target { opacity: 0.3 !important; } */
     </style>
 </head>
 <body>
@@ -1618,8 +2314,8 @@ generateVRHTML(projectData) {
         </a-entity>
         
         <!-- VR Controllers -->
-        <a-entity class="vr-controller" laser-controls="hand: right" raycaster="objects: .clickable-target; far: 20"></a-entity>
-        <a-entity class="vr-controller" laser-controls="hand: left" raycaster="objects: .clickable-target; far: 20"></a-entity>
+        <a-entity laser-controls="hand: right" raycaster="objects: .clickable-target; far: 20"></a-entity>
+        <a-entity laser-controls="hand: left" raycaster="objects: .clickable-target; far: 20"></a-entity>
         
         <a-entity light="type: ambient; color: #888; intensity: 0.8"></a-entity>
         <a-entity light="type: directional; color: #fff; intensity: 0.5" position="-1 1 1"></a-entity>
@@ -1818,47 +2514,55 @@ generateVRHTML(projectData) {
     </script>
 </body>
 </html>`;
-}
-    
-  return `${x.toFixed(3)} ${y.toFixed(3)} ${z.toFixed(3)}`;
     }
 
-    
-    const baseColor = marker.color || this.getDefaultColor(marker.type);
-    
-    const styles = {
-        info: {
-            outerRing: `<a-ring class="marker-visual" radius-inner="0.2" radius-outer="0.3" color="${baseColor}" opacity="${marker.opacity || 0.8}"></a-ring>`,
-            innerCore: `<a-sphere class="marker-visual" radius="0.15" color="${baseColor}" opacity="0.9"></a-sphere>`,
-            icon: `<a-text class="marker-visual" value="i" align="center" color="white" position="0 0 0.16" scale="2 2 2"></a-text>`,
-            typeLabel: "INFO",
-            textColor: baseColor
-        },
-        link: {
-            outerRing: `<a-ring class="marker-visual" radius-inner="0.2" radius-outer="0.3" color="${baseColor}" opacity="${marker.opacity || 0.8}"></a-ring>`,
-            innerCore: `<a-sphere class="marker-visual" radius="0.15" color="${baseColor}" opacity="0.9"></a-sphere>`,
-            icon: `<a-text class="marker-visual" value="🔗" align="center" color="white" position="0 0 0.16" scale="1.5 1.5 1.5"></a-text>`,
-            typeLabel: "LINK",
-            textColor: baseColor
-        },
-        audio: {
-            outerRing: `<a-ring class="marker-visual" radius-inner="0.2" radius-outer="0.3" color="${baseColor}" opacity="${marker.opacity || 0.8}"></a-ring>`,
-            innerCore: `<a-sphere class="marker-visual" radius="0.15" color="${baseColor}" opacity="0.9"></a-sphere>`,
-            icon: `<a-text class="marker-visual" value="♪" align="center" color="white" position="0 0 0.16" scale="1.5 1.5 1.5"></a-text>`,
-            typeLabel: "AUDIO",
-            textColor: baseColor
-        },
-        video: {
-            outerRing: `<a-ring class="marker-visual" radius-inner="0.2" radius-outer="0.3" color="${baseColor}" opacity="${marker.opacity || 0.8}"></a-ring>`,
-            innerCore: `<a-sphere class="marker-visual" radius="0.15" color="${baseColor}" opacity="0.9"></a-sphere>`,
-            icon: `<a-text class="marker-visual" value="▶" align="center" color="white" position="0 0 0.16" scale="1.5 1.5 1.5"></a-text>`,
-            typeLabel: "VIDEO",
-            textColor: baseColor
-        }
-    };
-    
-    return styles[marker.type] || styles.info;
-}
+    sphericalToCartesian(phi, theta, radius = 5) {
+        const phiRad = (phi * Math.PI) / 180;
+        const thetaRad = (theta * Math.PI) / 180;
+        
+        const x = radius * Math.cos(thetaRad) * Math.sin(phiRad);
+        const y = radius * Math.sin(thetaRad);
+        const z = -radius * Math.cos(thetaRad) * Math.cos(phiRad);
+        
+        return `${x.toFixed(3)} ${y.toFixed(3)} ${z.toFixed(3)}`;
+    }
+
+    getVRMarkerStyle(marker) {
+        const baseColor = marker.color || this.getDefaultColor(marker.type);
+        
+        const styles = {
+            info: {
+                outerRing: `<a-ring radius-inner="0.2" radius-outer="0.3" color="${baseColor}" opacity="${marker.opacity || 0.8}"></a-ring>`,
+                innerCore: `<a-sphere radius="0.15" color="${baseColor}" opacity="0.9"></a-sphere>`,
+                icon: `<a-text value="i" align="center" color="white" position="0 0 0.16" scale="2 2 2"></a-text>`,
+                typeLabel: "INFO",
+                textColor: baseColor
+            },
+            link: {
+                outerRing: `<a-ring radius-inner="0.2" radius-outer="0.3" color="${baseColor}" opacity="${marker.opacity || 0.8}"></a-ring>`,
+                innerCore: `<a-sphere radius="0.15" color="${baseColor}" opacity="0.9"></a-sphere>`,
+                icon: `<a-text value="🔗" align="center" color="white" position="0 0 0.16" scale="1.5 1.5 1.5"></a-text>`,
+                typeLabel: "LINK",
+                textColor: baseColor
+            },
+            audio: {
+                outerRing: `<a-ring radius-inner="0.2" radius-outer="0.3" color="${baseColor}" opacity="${marker.opacity || 0.8}"></a-ring>`,
+                innerCore: `<a-sphere radius="0.15" color="${baseColor}" opacity="0.9"></a-sphere>`,
+                icon: `<a-text value="♪" align="center" color="white" position="0 0 0.16" scale="1.5 1.5 1.5"></a-text>`,
+                typeLabel: "AUDIO",
+                textColor: baseColor
+            },
+            video: {
+                outerRing: `<a-ring radius-inner="0.2" radius-outer="0.3" color="${baseColor}" opacity="${marker.opacity || 0.8}"></a-ring>`,
+                innerCore: `<a-sphere radius="0.15" color="${baseColor}" opacity="0.9"></a-sphere>`,
+                icon: `<a-text value="▶" align="center" color="white" position="0 0 0.16" scale="1.5 1.5 1.5"></a-text>`,
+                typeLabel: "VIDEO",
+                textColor: baseColor
+            }
+        };
+        
+        return styles[marker.type] || styles.info;
+    }
 
     getDefaultColor(type) {
         const colors = {
@@ -2086,6 +2790,7 @@ generateVRHTML(projectData) {
     }
 }
 
+// Initialize the editor when the page loads
 document.addEventListener('DOMContentLoaded', () => {
     try {
         new EnhancedImageMarkerEditor();
@@ -2100,3 +2805,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 });
+
+    </script>
+</body>
+</html>
+
