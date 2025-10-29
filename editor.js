@@ -1495,7 +1495,8 @@ class EnhancedImageMarkerEditor {
 </html>`;
     }
 
-    generateVRHTML(projectData) {
+// REPLACE the generateVRHTML method with this dual-compatible version:
+generateVRHTML(projectData) {
     const markers = projectData.markers.map(marker => {
         const phi = marker.phi || this.convertXToPhi(marker.x);
         const theta = marker.theta || this.convertYToTheta(marker.y);
@@ -1518,13 +1519,21 @@ class EnhancedImageMarkerEditor {
         const markerStyle = this.getVRMarkerStyle(marker);
         
         return `
-        <a-entity class="vr-marker clickable" 
+        <a-entity class="interactive-marker" 
             data-marker='${escapedData}'
             position="${marker.position}"
-            animation="property: rotation; to: 0 360 0; loop: true; dur: 10000"
-            geometry="primitive: circle; radius: 0.3"
-            material="color: ${marker.color || this.getDefaultColor(marker.type)}; opacity: 0.01; transparent: true"
-            sound="on: click; src: #click-sound">
+            animation="property: rotation; to: 0 360 0; loop: true; dur: 10000">
+            
+            <!-- Clickable area for both mouse and VR -->
+            <a-sphere 
+                class="clickable-target"
+                radius="0.4"
+                color="#0000FF" 
+                opacity="0.01"
+                material="transparent: true; opacity: 0.01"
+                event-set__mouseenter="scale: 1.1 1.1 1.1"
+                event-set__mouseleave="scale: 1 1 1">
+            </a-sphere>
             
             ${markerStyle.outerRing}
             ${markerStyle.innerCore}
@@ -1557,6 +1566,7 @@ class EnhancedImageMarkerEditor {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>360° VR Experience</title>
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/aframe-event-set-component@4.2.1/dist/aframe-event-set-component.min.js"></script>
     <style>
         body { margin: 0; overflow: hidden; background: #000; }
         .info-panel {
@@ -1573,16 +1583,13 @@ class EnhancedImageMarkerEditor {
         .close-btn:hover { background: rgba(255,255,255,0.1); border-radius: 50%; }
         .media-container { margin-top: 15px; }
         
-        /* Make markers more visible for debugging */
-        .vr-marker:hover .marker-visual {
-            animation: pulse 0.5s infinite;
+        /* VR controller styles */
+        .vr-controller {
+            display: none;
         }
         
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.2); }
-            100% { transform: scale(1); }
-        }
+        /* Make click targets visible during development */
+        /* .clickable-target { opacity: 0.3 !important; } */
     </style>
 </head>
 <body>
@@ -1590,28 +1597,29 @@ class EnhancedImageMarkerEditor {
         vr-mode-ui="enabled: true" 
         loading-screen="dotsColor: #6366f1; backgroundColor: #000"
         cursor="rayOrigin: mouse"
-        raycaster="objects: .clickable">
-        
-        <!-- Add a subtle click sound -->
-        <audio id="click-sound" src="https://cdn.aframe.io/360-image-gallery-boilerplate/audio/click.ogg" preload="auto"></audio>
+        raycaster="objects: .clickable-target; far: 20">
         
         <a-sky src="${projectData.imageSrc}"></a-sky>
         
         ${markersHTML}
         
-        <!-- Camera setup with proper cursor -->
+        <!-- Camera with cursor for PC -->
         <a-entity id="camera" position="0 0 0">
             <a-camera look-controls wasd-controls>
                 <a-cursor
-                    id="cursor"
+                    id="mouse-cursor"
                     fuse="true"
-                    fuse-timeout="1000"
+                    fuse-timeout="1500"
                     animation__click="property: scale; startEvents: click; from: 0.1 0.1 0.1; to: 1 1 1; dur: 150"
-                    animation__fusing="property: scale; startEvents: fusing; from: 1 1 1; to: 0.1 0.1 0.1; dur: 1000"
-                    raycaster="objects: .clickable">
+                    animation__fusing="property: scale; startEvents: fusing; from: 1 1 1; to: 0.1 0.1 0.1; dur: 1500"
+                    raycaster="objects: .clickable-target">
                 </a-cursor>
             </a-camera>
         </a-entity>
+        
+        <!-- VR Controllers -->
+        <a-entity class="vr-controller" laser-controls="hand: right" raycaster="objects: .clickable-target; far: 20"></a-entity>
+        <a-entity class="vr-controller" laser-controls="hand: left" raycaster="objects: .clickable-target; far: 20"></a-entity>
         
         <a-entity light="type: ambient; color: #888; intensity: 0.8"></a-entity>
         <a-entity light="type: directional; color: #fff; intensity: 0.5" position="-1 1 1"></a-entity>
@@ -1626,122 +1634,104 @@ class EnhancedImageMarkerEditor {
     </div>
 
     <script>
-        // Debug info
-        console.log('VR Scene Loading with ${markers.length} markers...');
-        
         // Wait for A-Frame to load
         document.addEventListener('DOMContentLoaded', function() {
             const scene = document.querySelector('a-scene');
             
             if (scene.hasLoaded) {
-                initializeScene();
+                initializeInteractions();
             } else {
-                scene.addEventListener('loaded', initializeScene);
+                scene.addEventListener('loaded', initializeInteractions);
             }
         });
 
-        function initializeScene() {
-            console.log('A-Frame scene loaded, setting up interactions...');
-            setupMarkerInteractions();
+        function initializeInteractions() {
+            setupMouseInteractions();
+            setupVRInteractions();
             setupCursorEvents();
-            
-            // Debug: Log all markers
-            const markers = document.querySelectorAll('.vr-marker');
-            console.log('Found markers:', markers.length);
-            markers.forEach((marker, i) => {
-                console.log('Marker ${i}:', marker.getAttribute('data-marker'));
-            });
         }
 
-        function setupMarkerInteractions() {
-            const markers = document.querySelectorAll('.vr-marker');
+        function setupMouseInteractions() {
+            // Handle direct mouse clicks on markers
+            const markers = document.querySelectorAll('.interactive-marker');
             
             markers.forEach(marker => {
-                // Add click event listener directly to the marker
                 marker.addEventListener('click', function(evt) {
-                    console.log('Marker clicked directly!');
-                    const markerData = this.getAttribute('data-marker');
-                    if (markerData) {
-                        try {
-                            const markerObj = JSON.parse(markerData);
-                            console.log('Showing marker:', markerObj.title);
-                            showMarkerInfo(markerObj);
-                            
-                            // Visual feedback
-                            this.setAttribute('animation', {
-                                property: 'scale',
-                                to: '1.2 1.2 1.2',
-                                dur: 200,
-                                dir: 'alternate'
-                            });
-                            
-                            setTimeout(() => {
-                                this.setAttribute('scale', '1 1 1');
-                            }, 200);
-                            
-                        } catch (error) {
-                            console.error('Error parsing marker data:', error);
-                        }
-                    }
-                });
-                
-                // Add mouse enter/leave for visual feedback
-                marker.addEventListener('mouseenter', function() {
-                    this.setAttribute('scale', '1.1 1.1 1.1');
-                });
-                
-                marker.addEventListener('mouseleave', function() {
-                    this.setAttribute('scale', '1 1 1');
+                    handleMarkerInteraction(this);
                 });
             });
         }
 
-        function setupCursorEvents() {
-            const cursor = document.querySelector('a-cursor');
+        function setupVRInteractions() {
+            // Handle VR controller events
+            const scene = document.querySelector('a-scene');
             
-            if (cursor) {
-                // Handle cursor clicks
-                cursor.addEventListener('click', function(evt) {
-                    const intersectedEl = evt.detail.intersectedEl;
-                    if (intersectedEl && intersectedEl.classList.contains('clickable')) {
-                        console.log('Marker clicked via cursor!');
-                        // Trigger the marker's click event
-                        intersectedEl.dispatchEvent(new Event('click'));
-                    }
-                });
+            // Controller trigger events
+            scene.addEventListener('triggerdown', function(evt) {
+                const controller = evt.detail.target;
+                const intersected = controller.components.raycaster.intersectedEl;
                 
-                // Handle fuse completion (gaze interaction)
-                cursor.addEventListener('fusing', function(evt) {
-                    const intersectedEl = evt.detail.intersectedEl;
-                    if (intersectedEl && intersectedEl.classList.contains('clickable')) {
-                        console.log('Marker fused - auto-clicking!');
-                        // Auto-click after fuse completes
-                        setTimeout(() => {
-                            intersectedEl.dispatchEvent(new Event('click'));
-                        }, 100);
+                if (intersected && intersected.classList.contains('clickable-target')) {
+                    const marker = findParentMarker(intersected);
+                    if (marker) {
+                        handleMarkerInteraction(marker);
                     }
-                });
-            }
-            
-            // Also handle direct scene clicks as backup
-            document.querySelector('a-scene').addEventListener('click', function(evt) {
-                const intersectedEl = evt.detail.intersectedEl;
-                if (intersectedEl && intersectedEl.classList.contains('clickable')) {
-                    console.log('Marker clicked via scene!');
-                    intersectedEl.dispatchEvent(new Event('click'));
                 }
             });
         }
 
-        function showMarkerInfo(marker) {
-            if (!marker) {
-                console.error('No marker data provided');
-                return;
+        function setupCursorEvents() {
+            const cursor = document.querySelector('#mouse-cursor');
+            
+            if (cursor) {
+                // Handle cursor fuse completion (gaze interaction)
+                cursor.addEventListener('fusing', function(evt) {
+                    const intersectedEl = evt.detail.intersectedEl;
+                    if (intersectedEl && intersectedEl.classList.contains('clickable-target')) {
+                        const marker = findParentMarker(intersectedEl);
+                        if (marker) {
+                            handleMarkerInteraction(marker);
+                        }
+                    }
+                });
             }
-            
-            console.log('Displaying marker info:', marker.title);
-            
-            // Update panel content
+        }
+
+        function findParentMarker(element) {
+            let current = element;
+            while (current && !current.classList.contains('interactive-marker')) {
+                current = current.parentElement;
+                if (!current) return null;
+            }
+            return current;
+        }
+
+        function handleMarkerInteraction(markerEntity) {
+            const markerData = markerEntity.getAttribute('data-marker');
+            if (markerData) {
+                try {
+                    const marker = JSON.parse(markerData);
+                    showMarkerInfo(marker);
+                    
+                    // Visual feedback
+                    markerEntity.setAttribute('animation', {
+                        property: 'scale',
+                        to: '1.2 1.2 1.2',
+                        dur: 200,
+                        dir: 'alternate'
+                    });
+                    
+                    setTimeout(() => {
+                        markerEntity.setAttribute('scale', '1 1 1');
+                    }, 200);
+                    
+                } catch (error) {
+                    console.error('Error parsing marker data:', error);
+                }
+            }
+        }
+
+        function showMarkerInfo(marker) {
             document.getElementById('panelTitle').textContent = marker.title || 'Untitled Marker';
             document.getElementById('panelDescription').textContent = marker.description || 'No description provided.';
             
@@ -1758,15 +1748,10 @@ class EnhancedImageMarkerEditor {
             mediaElement.innerHTML = '';
             
             if (marker.mediaUrl && marker.mediaUrl.trim() !== '') {
-                console.log('Loading media:', marker.mediaUrl);
                 mediaElement.innerHTML = getMediaEmbed(marker.mediaUrl);
             }
             
-            // Show the panel
             document.getElementById('infoPanel').style.display = 'block';
-            
-            // Debug
-            console.log('Info panel should be visible now');
         }
 
         function closeInfoPanel() {
@@ -1776,7 +1761,6 @@ class EnhancedImageMarkerEditor {
         function getMediaEmbed(url) {
             if (!url) return '';
             
-            // YouTube
             if (url.includes('youtube.com') || url.includes('youtu.be')) {
                 const videoId = extractYouTubeId(url);
                 if (videoId) {
@@ -1784,7 +1768,6 @@ class EnhancedImageMarkerEditor {
                 }
             }
             
-            // Vimeo
             if (url.includes('vimeo.com')) {
                 const videoId = extractVimeoId(url);
                 if (videoId) {
@@ -1792,12 +1775,10 @@ class EnhancedImageMarkerEditor {
                 }
             }
             
-            // Audio files
             if (url.match(/\\.(mp3|wav|ogg|m4a)(\\?.*)?$/i)) {
                 return '<audio controls style="width: 100%; margin-top: 10px; border-radius: 8px;"><source src="' + url + '">Your browser does not support audio.</audio>';
             }
             
-            // Video files
             if (url.match(/\\.(mp4|webm|ogg|mov)(\\?.*)?$/i)) {
                 return '<video controls style="width: 100%; max-width: 100%; margin-top: 10px; border-radius: 8px;"><source src="' + url + '">Your browser does not support video.</video>';
             }
@@ -1822,7 +1803,6 @@ class EnhancedImageMarkerEditor {
             return match ? match[1] : null;
         }
 
-        // Close panel when clicking outside
         document.addEventListener('click', function(e) {
             const panel = document.getElementById('infoPanel');
             if (panel && panel.style.display === 'block' && !panel.contains(e.target)) {
@@ -1830,39 +1810,17 @@ class EnhancedImageMarkerEditor {
             }
         });
 
-        // Close with Escape key
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
                 closeInfoPanel();
             }
         });
-
-        // Debug function to test markers
-        window.testMarkers = function() {
-            const markers = document.querySelectorAll('.vr-marker');
-            console.log('=== MARKER DEBUG INFO ===');
-            console.log('Total markers:', markers.length);
-            
-            markers.forEach((marker, i) => {
-                const data = marker.getAttribute('data-marker');
-                console.log('Marker ${i}:', data ? JSON.parse(data) : 'No data');
-                
-                // Test click programmatically
-                setTimeout(() => {
-                    console.log('Testing click on marker ${i}');
-                    marker.dispatchEvent(new Event('click'));
-                }, i * 1000);
-            });
-        };
-        
-        // Auto-test after 3 seconds (for debugging)
-        setTimeout(() => {
-            console.log('Scene ready - markers should be clickable now');
-        }, 3000);
     </script>
 </body>
 </html>`;
-}   return `${x.toFixed(3)} ${y.toFixed(3)} ${z.toFixed(3)}`;
+}
+    
+  return `${x.toFixed(3)} ${y.toFixed(3)} ${z.toFixed(3)}`;
     }
 
     
