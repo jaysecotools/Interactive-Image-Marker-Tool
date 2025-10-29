@@ -2597,6 +2597,17 @@ class EnhancedImageMarkerEditor {
         }
     }
 
+    editMarkerProperties() {
+        if (this.selectedMarkers.size === 1) {
+            this.showMarkerProperties();
+            const titleInput = document.getElementById('markerTitle');
+            if (titleInput) {
+                titleInput.focus();
+                titleInput.select();
+            }
+        }
+    }
+
     showStatus(message, type) {
         const statusEl = document.getElementById('status');
         if (!statusEl) return;
@@ -2758,17 +2769,6 @@ class EnhancedImageMarkerEditor {
                 break;
         }
         this.hideContextMenu();
-    }
-
-    editMarkerProperties() {
-        if (this.selectedMarkers.size === 1) {
-            this.showMarkerProperties();
-            const titleInput = document.getElementById('markerTitle');
-            if (titleInput) {
-                titleInput.focus();
-                titleInput.select();
-            }
-        }
     }
 
     changeMarkerColor() {
