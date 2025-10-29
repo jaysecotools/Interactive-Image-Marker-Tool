@@ -1496,58 +1496,61 @@ class EnhancedImageMarkerEditor {
     }
 
     generateVRHTML(projectData) {
-        const markers = projectData.markers.map(marker => {
-            const phi = marker.phi || this.convertXToPhi(marker.x);
-            const theta = marker.theta || this.convertYToTheta(marker.y);
+    const markers = projectData.markers.map(marker => {
+        const phi = marker.phi || this.convertXToPhi(marker.x);
+        const theta = marker.theta || this.convertYToTheta(marker.y);
+        
+        return {
+            ...marker,
+            phi: phi,
+            theta: theta,
+            position: this.sphericalToCartesian(phi, theta, 5)
+        };
+    });
+
+    const markersHTML = markers.map(marker => {
+        const escapedData = JSON.stringify(marker)
+            .replace(/'/g, "&apos;")
+            .replace(/"/g, "&quot;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
+
+        const markerStyle = this.getVRMarkerStyle(marker);
+        
+        return `
+        <a-entity class="vr-marker clickable" 
+            data-marker='${escapedData}'
+            position="${marker.position}"
+            animation="property: rotation; to: 0 360 0; loop: true; dur: 10000"
+            geometry="primitive: circle; radius: 0.3"
+            material="color: ${marker.color || this.getDefaultColor(marker.type)}; opacity: 0.01; transparent: true"
+            sound="on: click; src: #click-sound">
             
-            return {
-                ...marker,
-                phi: phi,
-                theta: theta,
-                position: this.sphericalToCartesian(phi, theta, 5)
-            };
-        });
-
-        const markersHTML = markers.map(marker => {
-            const escapedData = JSON.stringify(marker)
-                .replace(/'/g, "&apos;")
-                .replace(/"/g, "&quot;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;");
-
-            const markerStyle = this.getVRMarkerStyle(marker);
+            ${markerStyle.outerRing}
+            ${markerStyle.innerCore}
+            ${markerStyle.icon}
             
-            return `
-            <a-entity class="vr-marker" 
-                data-marker='${escapedData}'
-                position="${marker.position}"
-                animation="property: rotation; to: 0 360 0; loop: true; dur: 10000">
-                
-                ${markerStyle.outerRing}
-                ${markerStyle.innerCore}
-                ${markerStyle.icon}
-                
-                <a-text 
-                    value="${this.escapeHtml(marker.title)}" 
-                    position="0 0.8 0" 
-                    align="center" 
-                    color="white"
-                    scale="1.5 1.5 1.5"
-                    width="3">
-                </a-text>
-                
-                <a-text 
-                    value="${markerStyle.typeLabel}" 
-                    position="0 -0.5 0" 
-                    align="center" 
-                    color="${markerStyle.textColor}"
-                    scale="1 1 1"
-                    width="2">
-                </a-text>
-            </a-entity>`;
-        }).join('');
+            <a-text 
+                value="${this.escapeHtml(marker.title)}" 
+                position="0 0.8 0" 
+                align="center" 
+                color="white"
+                scale="1.5 1.5 1.5"
+                width="3">
+            </a-text>
+            
+            <a-text 
+                value="${markerStyle.typeLabel}" 
+                position="0 -0.5 0" 
+                align="center" 
+                color="${markerStyle.textColor}"
+                scale="1 1 1"
+                width="2">
+            </a-text>
+        </a-entity>`;
+    }).join('');
 
-        return `<!DOCTYPE html>
+    return `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -1569,22 +1572,45 @@ class EnhancedImageMarkerEditor {
         }
         .close-btn:hover { background: rgba(255,255,255,0.1); border-radius: 50%; }
         .media-container { margin-top: 15px; }
+        
+        /* Make markers more visible for debugging */
+        .vr-marker:hover .marker-visual {
+            animation: pulse 0.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
     </style>
 </head>
 <body>
-    <a-scene vr-mode-ui="enabled: true" loading-screen="dotsColor: #6366f1; backgroundColor: #000">
+    <a-scene 
+        vr-mode-ui="enabled: true" 
+        loading-screen="dotsColor: #6366f1; backgroundColor: #000"
+        cursor="rayOrigin: mouse"
+        raycaster="objects: .clickable">
+        
+        <!-- Add a subtle click sound -->
+        <audio id="click-sound" src="https://cdn.aframe.io/360-image-gallery-boilerplate/audio/click.ogg" preload="auto"></audio>
         
         <a-sky src="${projectData.imageSrc}"></a-sky>
         
         ${markersHTML}
         
-        <a-entity id="rig" position="0 0 0">
-            <a-entity id="camera" camera look-controls wasd-controls>
-                <a-cursor fuse="true" fuse-timeout="1000"
+        <!-- Camera setup with proper cursor -->
+        <a-entity id="camera" position="0 0 0">
+            <a-camera look-controls wasd-controls>
+                <a-cursor
+                    id="cursor"
+                    fuse="true"
+                    fuse-timeout="1000"
                     animation__click="property: scale; startEvents: click; from: 0.1 0.1 0.1; to: 1 1 1; dur: 150"
-                    animation__fusing="property: scale; startEvents: fusing; from: 1 1 1; to: 0.1 0.1 0.1; dur: 1000">
+                    animation__fusing="property: scale; startEvents: fusing; from: 1 1 1; to: 0.1 0.1 0.1; dur: 1000"
+                    raycaster="objects: .clickable">
                 </a-cursor>
-            </a-entity>
+            </a-camera>
         </a-entity>
         
         <a-entity light="type: ambient; color: #888; intensity: 0.8"></a-entity>
@@ -1600,38 +1626,122 @@ class EnhancedImageMarkerEditor {
     </div>
 
     <script>
+        // Debug info
+        console.log('VR Scene Loading with ${markers.length} markers...');
+        
+        // Wait for A-Frame to load
         document.addEventListener('DOMContentLoaded', function() {
             const scene = document.querySelector('a-scene');
-            scene.addEventListener('loaded', setupInteractions);
+            
+            if (scene.hasLoaded) {
+                initializeScene();
+            } else {
+                scene.addEventListener('loaded', initializeScene);
+            }
         });
 
-        function setupInteractions() {
-            const cursor = document.querySelector('a-cursor');
+        function initializeScene() {
+            console.log('A-Frame scene loaded, setting up interactions...');
+            setupMarkerInteractions();
+            setupCursorEvents();
+            
+            // Debug: Log all markers
+            const markers = document.querySelectorAll('.vr-marker');
+            console.log('Found markers:', markers.length);
+            markers.forEach((marker, i) => {
+                console.log('Marker ${i}:', marker.getAttribute('data-marker'));
+            });
+        }
+
+        function setupMarkerInteractions() {
             const markers = document.querySelectorAll('.vr-marker');
             
             markers.forEach(marker => {
+                // Add click event listener directly to the marker
                 marker.addEventListener('click', function(evt) {
+                    console.log('Marker clicked directly!');
                     const markerData = this.getAttribute('data-marker');
                     if (markerData) {
-                        const marker = JSON.parse(markerData);
-                        showMarkerInfo(marker);
+                        try {
+                            const markerObj = JSON.parse(markerData);
+                            console.log('Showing marker:', markerObj.title);
+                            showMarkerInfo(markerObj);
+                            
+                            // Visual feedback
+                            this.setAttribute('animation', {
+                                property: 'scale',
+                                to: '1.2 1.2 1.2',
+                                dur: 200,
+                                dir: 'alternate'
+                            });
+                            
+                            setTimeout(() => {
+                                this.setAttribute('scale', '1 1 1');
+                            }, 200);
+                            
+                        } catch (error) {
+                            console.error('Error parsing marker data:', error);
+                        }
                     }
                 });
+                
+                // Add mouse enter/leave for visual feedback
+                marker.addEventListener('mouseenter', function() {
+                    this.setAttribute('scale', '1.1 1.1 1.1');
+                });
+                
+                marker.addEventListener('mouseleave', function() {
+                    this.setAttribute('scale', '1 1 1');
+                });
             });
+        }
 
-            cursor.addEventListener('fusing', function(evt) {
-                const intersectedEl = evt.detail.intersectedEl;
-                if (intersectedEl && intersectedEl.classList.contains('vr-marker')) {
-                    const markerData = intersectedEl.getAttribute('data-marker');
-                    if (markerData) {
-                        const marker = JSON.parse(markerData);
-                        showMarkerInfo(marker);
+        function setupCursorEvents() {
+            const cursor = document.querySelector('a-cursor');
+            
+            if (cursor) {
+                // Handle cursor clicks
+                cursor.addEventListener('click', function(evt) {
+                    const intersectedEl = evt.detail.intersectedEl;
+                    if (intersectedEl && intersectedEl.classList.contains('clickable')) {
+                        console.log('Marker clicked via cursor!');
+                        // Trigger the marker's click event
+                        intersectedEl.dispatchEvent(new Event('click'));
                     }
+                });
+                
+                // Handle fuse completion (gaze interaction)
+                cursor.addEventListener('fusing', function(evt) {
+                    const intersectedEl = evt.detail.intersectedEl;
+                    if (intersectedEl && intersectedEl.classList.contains('clickable')) {
+                        console.log('Marker fused - auto-clicking!');
+                        // Auto-click after fuse completes
+                        setTimeout(() => {
+                            intersectedEl.dispatchEvent(new Event('click'));
+                        }, 100);
+                    }
+                });
+            }
+            
+            // Also handle direct scene clicks as backup
+            document.querySelector('a-scene').addEventListener('click', function(evt) {
+                const intersectedEl = evt.detail.intersectedEl;
+                if (intersectedEl && intersectedEl.classList.contains('clickable')) {
+                    console.log('Marker clicked via scene!');
+                    intersectedEl.dispatchEvent(new Event('click'));
                 }
             });
         }
 
         function showMarkerInfo(marker) {
+            if (!marker) {
+                console.error('No marker data provided');
+                return;
+            }
+            
+            console.log('Displaying marker info:', marker.title);
+            
+            // Update panel content
             document.getElementById('panelTitle').textContent = marker.title || 'Untitled Marker';
             document.getElementById('panelDescription').textContent = marker.description || 'No description provided.';
             
@@ -1648,10 +1758,15 @@ class EnhancedImageMarkerEditor {
             mediaElement.innerHTML = '';
             
             if (marker.mediaUrl && marker.mediaUrl.trim() !== '') {
+                console.log('Loading media:', marker.mediaUrl);
                 mediaElement.innerHTML = getMediaEmbed(marker.mediaUrl);
             }
             
+            // Show the panel
             document.getElementById('infoPanel').style.display = 'block';
+            
+            // Debug
+            console.log('Info panel should be visible now');
         }
 
         function closeInfoPanel() {
@@ -1661,6 +1776,7 @@ class EnhancedImageMarkerEditor {
         function getMediaEmbed(url) {
             if (!url) return '';
             
+            // YouTube
             if (url.includes('youtube.com') || url.includes('youtu.be')) {
                 const videoId = extractYouTubeId(url);
                 if (videoId) {
@@ -1668,6 +1784,7 @@ class EnhancedImageMarkerEditor {
                 }
             }
             
+            // Vimeo
             if (url.includes('vimeo.com')) {
                 const videoId = extractVimeoId(url);
                 if (videoId) {
@@ -1675,10 +1792,12 @@ class EnhancedImageMarkerEditor {
                 }
             }
             
+            // Audio files
             if (url.match(/\\.(mp3|wav|ogg|m4a)(\\?.*)?$/i)) {
                 return '<audio controls style="width: 100%; margin-top: 10px; border-radius: 8px;"><source src="' + url + '">Your browser does not support audio.</audio>';
             }
             
+            // Video files
             if (url.match(/\\.(mp4|webm|ogg|mov)(\\?.*)?$/i)) {
                 return '<video controls style="width: 100%; max-width: 100%; margin-top: 10px; border-radius: 8px;"><source src="' + url + '">Your browser does not support video.</video>';
             }
@@ -1703,6 +1822,7 @@ class EnhancedImageMarkerEditor {
             return match ? match[1] : null;
         }
 
+        // Close panel when clicking outside
         document.addEventListener('click', function(e) {
             const panel = document.getElementById('infoPanel');
             if (panel && panel.style.display === 'block' && !panel.contains(e.target)) {
@@ -1710,63 +1830,77 @@ class EnhancedImageMarkerEditor {
             }
         });
 
+        // Close with Escape key
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
                 closeInfoPanel();
             }
         });
+
+        // Debug function to test markers
+        window.testMarkers = function() {
+            const markers = document.querySelectorAll('.vr-marker');
+            console.log('=== MARKER DEBUG INFO ===');
+            console.log('Total markers:', markers.length);
+            
+            markers.forEach((marker, i) => {
+                const data = marker.getAttribute('data-marker');
+                console.log('Marker ${i}:', data ? JSON.parse(data) : 'No data');
+                
+                // Test click programmatically
+                setTimeout(() => {
+                    console.log('Testing click on marker ${i}');
+                    marker.dispatchEvent(new Event('click'));
+                }, i * 1000);
+            });
+        };
+        
+        // Auto-test after 3 seconds (for debugging)
+        setTimeout(() => {
+            console.log('Scene ready - markers should be clickable now');
+        }, 3000);
     </script>
 </body>
 </html>`;
+}   return `${x.toFixed(3)} ${y.toFixed(3)} ${z.toFixed(3)}`;
     }
 
-    sphericalToCartesian(phi, theta, radius = 5) {
-        const phiRad = (phi * Math.PI) / 180;
-        const thetaRad = (theta * Math.PI) / 180;
-        
-        const x = radius * Math.cos(thetaRad) * Math.sin(phiRad);
-        const y = radius * Math.sin(thetaRad);
-        const z = -radius * Math.cos(thetaRad) * Math.cos(phiRad);
-        
-        return `${x.toFixed(3)} ${y.toFixed(3)} ${z.toFixed(3)}`;
-    }
-
-    getVRMarkerStyle(marker) {
-        const baseColor = marker.color || this.getDefaultColor(marker.type);
-        
-        const styles = {
-            info: {
-                outerRing: `<a-ring radius-inner="0.2" radius-outer="0.3" color="${baseColor}" opacity="${marker.opacity || 0.8}"></a-ring>`,
-                innerCore: `<a-sphere radius="0.15" color="${baseColor}" opacity="0.9"></a-sphere>`,
-                icon: `<a-text value="i" align="center" color="white" position="0 0 0.16" scale="2 2 2"></a-text>`,
-                typeLabel: "INFO",
-                textColor: baseColor
-            },
-            link: {
-                outerRing: `<a-ring radius-inner="0.2" radius-outer="0.3" color="${baseColor}" opacity="${marker.opacity || 0.8}"></a-ring>`,
-                innerCore: `<a-sphere radius="0.15" color="${baseColor}" opacity="0.9"></a-sphere>`,
-                icon: `<a-text value="🔗" align="center" color="white" position="0 0 0.16" scale="1.5 1.5 1.5"></a-text>`,
-                typeLabel: "LINK",
-                textColor: baseColor
-            },
-            audio: {
-                outerRing: `<a-ring radius-inner="0.2" radius-outer="0.3" color="${baseColor}" opacity="${marker.opacity || 0.8}"></a-ring>`,
-                innerCore: `<a-sphere radius="0.15" color="${baseColor}" opacity="0.9"></a-sphere>`,
-                icon: `<a-text value="♪" align="center" color="white" position="0 0 0.16" scale="1.5 1.5 1.5"></a-text>`,
-                typeLabel: "AUDIO",
-                textColor: baseColor
-            },
-            video: {
-                outerRing: `<a-ring radius-inner="0.2" radius-outer="0.3" color="${baseColor}" opacity="${marker.opacity || 0.8}"></a-ring>`,
-                innerCore: `<a-sphere radius="0.15" color="${baseColor}" opacity="0.9"></a-sphere>`,
-                icon: `<a-text value="▶" align="center" color="white" position="0 0 0.16" scale="1.5 1.5 1.5"></a-text>`,
-                typeLabel: "VIDEO",
-                textColor: baseColor
-            }
-        };
-        
-        return styles[marker.type] || styles.info;
-    }
+    
+    const baseColor = marker.color || this.getDefaultColor(marker.type);
+    
+    const styles = {
+        info: {
+            outerRing: `<a-ring class="marker-visual" radius-inner="0.2" radius-outer="0.3" color="${baseColor}" opacity="${marker.opacity || 0.8}"></a-ring>`,
+            innerCore: `<a-sphere class="marker-visual" radius="0.15" color="${baseColor}" opacity="0.9"></a-sphere>`,
+            icon: `<a-text class="marker-visual" value="i" align="center" color="white" position="0 0 0.16" scale="2 2 2"></a-text>`,
+            typeLabel: "INFO",
+            textColor: baseColor
+        },
+        link: {
+            outerRing: `<a-ring class="marker-visual" radius-inner="0.2" radius-outer="0.3" color="${baseColor}" opacity="${marker.opacity || 0.8}"></a-ring>`,
+            innerCore: `<a-sphere class="marker-visual" radius="0.15" color="${baseColor}" opacity="0.9"></a-sphere>`,
+            icon: `<a-text class="marker-visual" value="🔗" align="center" color="white" position="0 0 0.16" scale="1.5 1.5 1.5"></a-text>`,
+            typeLabel: "LINK",
+            textColor: baseColor
+        },
+        audio: {
+            outerRing: `<a-ring class="marker-visual" radius-inner="0.2" radius-outer="0.3" color="${baseColor}" opacity="${marker.opacity || 0.8}"></a-ring>`,
+            innerCore: `<a-sphere class="marker-visual" radius="0.15" color="${baseColor}" opacity="0.9"></a-sphere>`,
+            icon: `<a-text class="marker-visual" value="♪" align="center" color="white" position="0 0 0.16" scale="1.5 1.5 1.5"></a-text>`,
+            typeLabel: "AUDIO",
+            textColor: baseColor
+        },
+        video: {
+            outerRing: `<a-ring class="marker-visual" radius-inner="0.2" radius-outer="0.3" color="${baseColor}" opacity="${marker.opacity || 0.8}"></a-ring>`,
+            innerCore: `<a-sphere class="marker-visual" radius="0.15" color="${baseColor}" opacity="0.9"></a-sphere>`,
+            icon: `<a-text class="marker-visual" value="▶" align="center" color="white" position="0 0 0.16" scale="1.5 1.5 1.5"></a-text>`,
+            typeLabel: "VIDEO",
+            textColor: baseColor
+        }
+    };
+    
+    return styles[marker.type] || styles.info;
+}
 
     getDefaultColor(type) {
         const colors = {
