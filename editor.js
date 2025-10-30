@@ -1495,102 +1495,193 @@ class EnhancedImageMarkerEditor {
 </html>`;
     }
 
-    generateVRHTML(projectData) {
-        const markers = projectData.markers.map(marker => {
-            const phi = marker.phi || this.convertXToPhi(marker.x);
-            const theta = marker.theta || this.convertYToTheta(marker.y);
+    // Replace your current generateVRHTML function with this corrected version
+generateVRHTML(projectData) {
+    const markers = projectData.markers.map(marker => {
+        const phi = marker.phi || this.convertXToPhi(marker.x);
+        const theta = marker.theta || this.convertYToTheta(marker.y);
+        
+        return {
+            ...marker,
+            phi: phi,
+            theta: theta,
+            position: this.sphericalToCartesian(phi, theta, 5)
+        };
+    });
+
+    const markersHTML = markers.map(marker => {
+        const escapedData = JSON.stringify(marker)
+            .replace(/'/g, "&apos;")
+            .replace(/"/g, "&quot;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
+
+        const markerStyle = this.getVRMarkerStyle(marker);
+        
+        return `
+        <a-entity class="vr-marker interactive-marker" 
+            data-marker='${escapedData}'
+            position="${marker.position}"
+            animation="property: rotation; to: 0 360 0; loop: true; dur: 10000"
+            clickable>
             
-            return {
-                ...marker,
-                phi: phi,
-                theta: theta,
-                position: this.sphericalToCartesian(phi, theta, 5)
-            };
-        });
-
-        const markersHTML = markers.map(marker => {
-            const escapedData = JSON.stringify(marker)
-                .replace(/'/g, "&apos;")
-                .replace(/"/g, "&quot;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;");
-
-            const markerStyle = this.getVRMarkerStyle(marker);
+            ${markerStyle.outerRing}
+            ${markerStyle.innerCore}
+            ${markerStyle.icon}
             
-            return `
-            <a-entity class="vr-marker" 
-                data-marker='${escapedData}'
-                position="${marker.position}"
-                animation="property: rotation; to: 0 360 0; loop: true; dur: 10000">
-                
-                ${markerStyle.outerRing}
-                ${markerStyle.innerCore}
-                ${markerStyle.icon}
-                
-                <a-text 
-                    value="${this.escapeHtml(marker.title)}" 
-                    position="0 0.8 0" 
-                    align="center" 
-                    color="white"
-                    scale="1.5 1.5 1.5"
-                    width="3">
-                </a-text>
-                
-                <a-text 
-                    value="${markerStyle.typeLabel}" 
-                    position="0 -0.5 0" 
-                    align="center" 
-                    color="${markerStyle.textColor}"
-                    scale="1 1 1"
-                    width="2">
-                </a-text>
-            </a-entity>`;
-        }).join('');
+            <a-text 
+                value="${this.escapeHtml(marker.title)}" 
+                position="0 0.8 0" 
+                align="center" 
+                color="white"
+                scale="1.5 1.5 1.5"
+                width="3">
+            </a-text>
+            
+            <a-text 
+                value="${markerStyle.typeLabel}" 
+                position="0 -0.5 0" 
+                align="center" 
+                color="${markerStyle.textColor}"
+                scale="1 1 1"
+                width="2">
+            </a-text>
+        </a-entity>`;
+    }).join('');
 
-        return `<!DOCTYPE html>
+    return `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>360° VR Experience</title>
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+    <!-- Add A-Frame extras for better interaction -->
+    <script src="https://unpkg.com/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
     <style>
-        body { margin: 0; overflow: hidden; background: #000; }
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background: #000; 
+            font-family: Arial, sans-serif;
+        }
         .info-panel {
-            position: fixed; top: 20px; left: 20px; background: rgba(0,0,0,0.95); 
-            color: white; padding: 20px; border-radius: 10px; max-width: 400px; 
-            max-height: 80vh; overflow-y: auto; z-index: 1000; display: none;
-            border: 2px solid #6366f1; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            position: fixed; 
+            top: 20px; 
+            left: 20px; 
+            background: rgba(0,0,0,0.95); 
+            color: white; 
+            padding: 20px; 
+            border-radius: 10px; 
+            max-width: 400px; 
+            max-height: 80vh; 
+            overflow-y: auto; 
+            z-index: 1000; 
+            display: none;
+            border: 2px solid #6366f1; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            backdrop-filter: blur(10px);
         }
         .close-btn {
-            position: absolute; top: 10px; right: 15px; background: none; border: none;
-            color: white; font-size: 20px; cursor: pointer; padding: 0; width: 30px; height: 30px;
-            display: flex; align-items: center; justify-content: center;
+            position: absolute; 
+            top: 10px; 
+            right: 15px; 
+            background: none; 
+            border: none;
+            color: white; 
+            font-size: 20px; 
+            cursor: pointer; 
+            padding: 0; 
+            width: 30px; 
+            height: 30px;
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
         }
-        .close-btn:hover { background: rgba(255,255,255,0.1); border-radius: 50%; }
-        .media-container { margin-top: 15px; }
+        .close-btn:hover { 
+            background: rgba(255,255,255,0.1); 
+            border-radius: 50%; 
+        }
+        .media-container { 
+            margin-top: 15px; 
+        }
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 24px;
+            z-index: 9999;
+        }
+        .vr-controls-info {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            max-width: 300px;
+            z-index: 100;
+        }
     </style>
 </head>
 <body>
-    <a-scene vr-mode-ui="enabled: true" loading-screen="dotsColor: #6366f1; backgroundColor: #000">
+    <div class="loading-screen" id="loadingScreen">
+        <div style="text-align: center;">
+            <div style="margin-bottom: 20px;">Loading VR Experience...</div>
+            <div style="font-size: 16px; opacity: 0.8;">Look around and click on markers to interact</div>
+        </div>
+    </div>
+
+    <a-scene 
+        vr-mode-ui="enabled: true" 
+        loading-screen="dotsColor: #6366f1; backgroundColor: #000"
+        cursor="rayOrigin: mouse"
+        raycaster="objects: .interactive-marker"
+        renderer="antialias: true; colorManagement: true">
         
-        <a-sky src="${projectData.imageSrc}"></a-sky>
+        <!-- 360° Image -->
+        <a-sky src="${projectData.imageSrc}" rotation="0 -90 0"></a-sky>
         
+        <!-- Markers -->
         ${markersHTML}
         
-        <a-entity id="rig" position="0 0 0">
-            <a-entity id="camera" camera look-controls wasd-controls>
-                <a-cursor fuse="true" fuse-timeout="1000"
-                    animation__click="property: scale; startEvents: click; from: 0.1 0.1 0.1; to: 1 1 1; dur: 150"
-                    animation__fusing="property: scale; startEvents: fusing; from: 1 1 1; to: 0.1 0.1 0.1; dur: 1000">
-                </a-cursor>
+        <!-- Camera Rig -->
+        <a-entity id="rig" movement-controls position="0 0 0">
+            <a-entity 
+                id="camera" 
+                camera 
+                look-controls 
+                wasd-controls 
+                position="0 1.6 0"
+                cursor="rayOrigin: cursor; fuse: true; fuseTimeout: 1000"
+                raycaster="objects: .interactive-marker, .clickable">
             </a-entity>
         </a-entity>
         
+        <!-- Lighting -->
         <a-entity light="type: ambient; color: #888; intensity: 0.8"></a-entity>
         <a-entity light="type: directional; color: #fff; intensity: 0.5" position="-1 1 1"></a-entity>
+        
+        <!-- Ground reference (optional) -->
+        <a-circle 
+            position="0 -2 0" 
+            rotation="-90 0 0" 
+            radius="10" 
+            color="#333" 
+            opacity="0.3">
+        </a-circle>
     </a-scene>
 
+    <!-- Info Panel -->
     <div class="info-panel" id="infoPanel">
         <button class="close-btn" onclick="closeInfoPanel()">&times;</button>
         <h3 id="panelTitle" style="margin-bottom: 15px; color: #6366f1;">Marker Info</h3>
@@ -1599,43 +1690,142 @@ class EnhancedImageMarkerEditor {
         <div class="media-container" id="panelMedia"></div>
     </div>
 
+    <!-- Controls Info -->
+    <div class="vr-controls-info" id="controlsInfo">
+        <strong>Controls:</strong><br>
+        • Mouse: Look around & click markers<br>
+        • WASD: Move around<br>
+        • VR: Use VR controllers<br>
+        • Mobile: Touch to look, virtual joystick to move
+    </div>
+
     <script>
+        // Enhanced interaction system
         document.addEventListener('DOMContentLoaded', function() {
             const scene = document.querySelector('a-scene');
-            scene.addEventListener('loaded', setupInteractions);
+            const loadingScreen = document.getElementById('loadingScreen');
+            
+            scene.addEventListener('loaded', function() {
+                // Hide loading screen
+                setTimeout(() => {
+                    if (loadingScreen) {
+                        loadingScreen.style.display = 'none';
+                    }
+                }, 1000);
+                
+                setupVRInteractions();
+            });
+            
+            // Handle scene load errors
+            scene.addEventListener('error', function() {
+                if (loadingScreen) {
+                    loadingScreen.innerHTML = '<div style="text-align: center; color: #ff4444;">Error loading VR experience. Please check your image URL.</div>';
+                }
+            });
         });
 
-        function setupInteractions() {
-            const cursor = document.querySelector('a-cursor');
-            const markers = document.querySelectorAll('.vr-marker');
+        function setupVRInteractions() {
+            const camera = document.querySelector('#camera');
+            const cursor = camera.querySelector('[cursor]');
             
-            markers.forEach(marker => {
-                marker.addEventListener('click', function(evt) {
-                    const markerData = this.getAttribute('data-marker');
-                    if (markerData) {
-                        const marker = JSON.parse(markerData);
-                        showMarkerInfo(marker);
-                    }
-                });
+            if (!cursor) {
+                console.warn('Cursor element not found');
+                return;
+            }
+
+            // Handle mouse clicks
+            scene.addEventListener('click', function(evt) {
+                const intersectedEl = evt.detail.intersectedEl;
+                if (intersectedEl && intersectedEl.classList.contains('interactive-marker')) {
+                    handleMarkerClick(intersectedEl);
+                }
+            });
+
+            // Handle VR controller clicks
+            scene.addEventListener('triggerdown', function(evt) {
+                const intersectedEl = evt.detail.intersectedEl;
+                if (intersectedEl && intersectedEl.classList.contains('interactive-marker')) {
+                    handleMarkerClick(intersectedEl);
+                }
+            });
+
+            // Handle fuse events (gaze-based interaction)
+            cursor.addEventListener('fusing', function(evt) {
+                const intersectedEl = evt.detail.intersectedEl;
+                if (intersectedEl && intersectedEl.classList.contains('interactive-marker')) {
+                    // Visual feedback during fusing
+                    intersectedEl.setAttribute('animation', {
+                        property: 'scale',
+                        to: '1.2 1.2 1.2',
+                        dur: 500
+                    });
+                }
             });
 
             cursor.addEventListener('fusing', function(evt) {
                 const intersectedEl = evt.detail.intersectedEl;
-                if (intersectedEl && intersectedEl.classList.contains('vr-marker')) {
-                    const markerData = intersectedEl.getAttribute('data-marker');
-                    if (markerData) {
-                        const marker = JSON.parse(markerData);
-                        showMarkerInfo(marker);
-                    }
+                if (intersectedEl && intersectedEl.classList.contains('interactive-marker')) {
+                    handleMarkerClick(intersectedEl);
+                }
+            });
+
+            // Add hover effects
+            scene.addEventListener('mouseenter', function(evt) {
+                const el = evt.detail.intersectedEl;
+                if (el && el.classList.contains('interactive-marker')) {
+                    el.setAttribute('animation', {
+                        property: 'scale',
+                        to: '1.1 1.1 1.1',
+                        dur: 200
+                    });
+                }
+            });
+
+            scene.addEventListener('mouseleave', function(evt) {
+                const el = evt.detail.intersectedEl;
+                if (el && el.classList.contains('interactive-marker')) {
+                    el.setAttribute('animation', {
+                        property: 'scale',
+                        to: '1 1 1',
+                        dur: 200
+                    });
                 }
             });
         }
 
+        function handleMarkerClick(markerElement) {
+            const markerData = markerElement.getAttribute('data-marker');
+            if (markerData) {
+                try {
+                    const marker = JSON.parse(markerData);
+                    showMarkerInfo(marker);
+                    
+                    // Add click feedback
+                    markerElement.setAttribute('animation', {
+                        property: 'scale',
+                        from: '1.3 1.3 1.3',
+                        to: '1 1 1',
+                        dur: 300
+                    });
+                } catch (e) {
+                    console.error('Error parsing marker data:', e);
+                }
+            }
+        }
+
         function showMarkerInfo(marker) {
-            document.getElementById('panelTitle').textContent = marker.title || 'Untitled Marker';
-            document.getElementById('panelDescription').textContent = marker.description || 'No description provided.';
-            
+            const panel = document.getElementById('infoPanel');
+            const title = document.getElementById('panelTitle');
+            const description = document.getElementById('panelDescription');
             const linkElement = document.getElementById('panelLink');
+            const mediaElement = document.getElementById('panelMedia');
+            
+            if (!panel || !title) return;
+            
+            title.textContent = marker.title || 'Untitled Marker';
+            description.textContent = marker.description || 'No description provided.';
+            
+            // Handle link
             if (marker.url && marker.url.trim() !== '') {
                 linkElement.href = marker.url;
                 linkElement.textContent = '🔗 Visit Link';
@@ -1644,23 +1834,37 @@ class EnhancedImageMarkerEditor {
                 linkElement.style.display = 'none';
             }
             
-            const mediaElement = document.getElementById('panelMedia');
+            // Handle media
             mediaElement.innerHTML = '';
-            
             if (marker.mediaUrl && marker.mediaUrl.trim() !== '') {
                 mediaElement.innerHTML = getMediaEmbed(marker.mediaUrl);
             }
             
-            document.getElementById('infoPanel').style.display = 'block';
+            panel.style.display = 'block';
+            
+            // Auto-hide controls info when panel is open
+            const controlsInfo = document.getElementById('controlsInfo');
+            if (controlsInfo) {
+                controlsInfo.style.display = 'none';
+            }
         }
 
         function closeInfoPanel() {
-            document.getElementById('infoPanel').style.display = 'none';
+            const panel = document.getElementById('infoPanel');
+            const controlsInfo = document.getElementById('controlsInfo');
+            
+            if (panel) {
+                panel.style.display = 'none';
+            }
+            if (controlsInfo) {
+                controlsInfo.style.display = 'block';
+            }
         }
 
         function getMediaEmbed(url) {
             if (!url) return '';
             
+            // YouTube
             if (url.includes('youtube.com') || url.includes('youtu.be')) {
                 const videoId = extractYouTubeId(url);
                 if (videoId) {
@@ -1668,6 +1872,7 @@ class EnhancedImageMarkerEditor {
                 }
             }
             
+            // Vimeo
             if (url.includes('vimeo.com')) {
                 const videoId = extractVimeoId(url);
                 if (videoId) {
@@ -1675,14 +1880,26 @@ class EnhancedImageMarkerEditor {
                 }
             }
             
+            // Audio files
             if (url.match(/\\.(mp3|wav|ogg|m4a)(\\?.*)?$/i)) {
                 return '<audio controls style="width: 100%; margin-top: 10px; border-radius: 8px;"><source src="' + url + '">Your browser does not support audio.</audio>';
             }
             
+            // Video files
             if (url.match(/\\.(mp4|webm|ogg|mov)(\\?.*)?$/i)) {
                 return '<video controls style="width: 100%; max-width: 100%; margin-top: 10px; border-radius: 8px;"><source src="' + url + '">Your browser does not support video.</video>';
             }
             
+            // SoundCloud
+            if (url.includes('soundcloud.com')) {
+                return '<div style="background: #f8fafc; padding: 15px; border-radius: 8px; text-align: center; margin: 10px 0;">' +
+                       '<p style="margin-bottom: 10px; color: #666;">🎵 SoundCloud Audio</p>' +
+                       '<a href="' + url + '" target="_blank" rel="noopener" style="display: inline-block; padding: 10px 20px; background: #ff5500; color: white; text-decoration: none; border-radius: 6px; font-weight: bold;">' +
+                       'Listen on SoundCloud</a>' +
+                       '</div>';
+            }
+            
+            // Default link
             return '<a href="' + url + '" target="_blank" rel="noopener" style="display: inline-block; padding: 10px 20px; background: #6366f1; color: white; text-decoration: none; border-radius: 6px; margin-top: 10px; font-weight: bold;">Open Media</a>';
         }
 
@@ -1703,6 +1920,7 @@ class EnhancedImageMarkerEditor {
             return match ? match[1] : null;
         }
 
+        // Close panel when clicking outside
         document.addEventListener('click', function(e) {
             const panel = document.getElementById('infoPanel');
             if (panel && panel.style.display === 'block' && !panel.contains(e.target)) {
@@ -1715,10 +1933,25 @@ class EnhancedImageMarkerEditor {
                 closeInfoPanel();
             }
         });
+
+        // Handle mobile device detection
+        function isMobileDevice() {
+            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        }
+
+        // Adjust controls based on device
+        if (isMobileDevice()) {
+            document.addEventListener('DOMContentLoaded', function() {
+                const controlsInfo = document.getElementById('controlsInfo');
+                if (controlsInfo) {
+                    controlsInfo.innerHTML = '<strong>Controls:</strong><br>• Touch and drag: Look around<br>• Virtual joystick: Move<br>• Tap markers: Interact';
+                }
+            });
+        }
     </script>
 </body>
 </html>`;
-    }
+}
 
     sphericalToCartesian(phi, theta, radius = 5) {
         const phiRad = (phi * Math.PI) / 180;
