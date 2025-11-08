@@ -1509,17 +1509,22 @@ generateVRHTML(projectData) {
     });
 
     const markersHTML = markers.map(marker => {
-        const escapedData = JSON.stringify(marker)
-            .replace(/'/g, "&apos;")
-            .replace(/"/g, "&quot;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;");
-
+        // Use a simpler, more reliable data encoding
+        const markerData = {
+            id: marker.id,
+            title: marker.title || 'Untitled Marker',
+            description: marker.description || '',
+            url: marker.url || '',
+            mediaUrl: marker.mediaUrl || '',
+            type: marker.type || 'info'
+        };
+        
+        const encodedData = encodeURIComponent(JSON.stringify(markerData));
         const markerStyle = this.getVRMarkerStyle(marker);
         
         return `
         <a-entity class="vr-marker interactive-marker" 
-            data-marker='${escapedData}'
+            data-marker="${encodedData}"
             position="${marker.position}"
             animation="property: rotation; to: 0 360 0; loop: true; dur: 10000"
             data-interactive="true">
@@ -1555,54 +1560,57 @@ generateVRHTML(projectData) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>360° VR Experience</title>
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
-    <!-- Add A-Frame extras for better interaction -->
-    <script src="https://unpkg.com/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
     <style>
         body { 
             margin: 0; 
             overflow: hidden; 
             background: #000; 
             font-family: Arial, sans-serif;
+            width: 100vw;
+            height: 100vh;
         }
         .info-panel {
             position: fixed; 
-            top: 20px; 
-            left: 20px; 
+            top: 50%; 
+            left: 50%; 
+            transform: translate(-50%, -50%);
             background: rgba(0,0,0,0.95); 
             color: white; 
-            padding: 20px; 
-            border-radius: 10px; 
-            max-width: 400px; 
+            padding: 30px; 
+            border-radius: 15px; 
+            max-width: 500px; 
+            width: 90%;
             max-height: 80vh; 
             overflow-y: auto; 
             z-index: 1000; 
             display: none;
             border: 2px solid #6366f1; 
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
             backdrop-filter: blur(10px);
         }
         .close-btn {
             position: absolute; 
-            top: 10px; 
-            right: 15px; 
+            top: 15px; 
+            right: 20px; 
             background: none; 
             border: none;
             color: white; 
-            font-size: 20px; 
+            font-size: 24px; 
             cursor: pointer; 
             padding: 0; 
-            width: 30px; 
-            height: 30px;
+            width: 35px; 
+            height: 35px;
             display: flex; 
             align-items: center; 
             justify-content: center;
+            border-radius: 50%;
+            transition: background 0.3s ease;
         }
         .close-btn:hover { 
-            background: rgba(255,255,255,0.1); 
-            border-radius: 50%; 
+            background: rgba(255,255,255,0.2);
         }
         .media-container { 
-            margin-top: 15px; 
+            margin-top: 20px; 
         }
         .loading-screen {
             position: fixed;
@@ -1638,13 +1646,28 @@ generateVRHTML(projectData) {
             50% { transform: scale(1.1); opacity: 0.7; }
             100% { transform: scale(1); opacity: 1; }
         }
+        
+        /* Mobile optimizations */
+        @media (max-width: 768px) {
+            .info-panel {
+                padding: 20px;
+                width: 95%;
+            }
+            .vr-controls-info {
+                bottom: 10px;
+                left: 10px;
+                right: 10px;
+                max-width: none;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="loading-screen" id="loadingScreen">
         <div style="text-align: center;">
             <div style="margin-bottom: 20px;">Loading VR Experience...</div>
-            <div style="font-size: 16px; opacity: 0.8;">Look around and click on markers to interact</div>
+            <div style="width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #6366f1; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto;"></div>
+            <div style="font-size: 16px; opacity: 0.8; margin-top: 20px;">Look around and click on markers to interact</div>
         </div>
     </div>
 
@@ -1653,7 +1676,8 @@ generateVRHTML(projectData) {
         loading-screen="dotsColor: #6366f1; backgroundColor: #000"
         cursor="rayOrigin: mouse"
         raycaster="objects: .interactive-marker; far: 20; near: 0.1"
-        renderer="antialias: true; colorManagement: true; precision: high">
+        renderer="antialias: true; colorManagement: true; precision: high"
+        embedded>
         
         <!-- 360° Image -->
         <a-sky src="${projectData.imageSrc}" rotation="0 -90 0"></a-sky>
@@ -1692,9 +1716,9 @@ generateVRHTML(projectData) {
     <!-- Info Panel -->
     <div class="info-panel" id="infoPanel">
         <button class="close-btn" onclick="closeInfoPanel()" aria-label="Close panel">&times;</button>
-        <h3 id="panelTitle" style="margin-bottom: 15px; color: #6366f1;">Marker Info</h3>
-        <p id="panelDescription" style="margin-bottom: 15px; line-height: 1.5;"></p>
-        <a id="panelLink" target="_blank" rel="noopener" style="display: none; padding: 8px 16px; background: #10b981; color: white; text-decoration: none; border-radius: 4px; margin-right: 10px; margin-bottom: 10px;">🔗 Visit Link</a>
+        <h3 id="panelTitle" style="margin-bottom: 15px; color: #6366f1; border-bottom: 1px solid #333; padding-bottom: 10px;">Marker Info</h3>
+        <p id="panelDescription" style="margin-bottom: 20px; line-height: 1.6; color: #ccc;"></p>
+        <div id="panelActions" style="margin-bottom: 20px;"></div>
         <div class="media-container" id="panelMedia"></div>
     </div>
 
@@ -1712,62 +1736,130 @@ generateVRHTML(projectData) {
         let currentScene = null;
         let isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
+        // Add spin animation for loading
+        const style = document.createElement('style');
+        style.textContent = \`
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+        \`;
+        document.head.appendChild(style);
+
         document.addEventListener('DOMContentLoaded', function() {
             const scene = document.querySelector('a-scene');
             currentScene = scene;
             const loadingScreen = document.getElementById('loadingScreen');
             
+            // Fallback: hide loading screen after timeout
+            const loadingTimeout = setTimeout(() => {
+                if (loadingScreen && loadingScreen.style.display !== 'none') {
+                    loadingScreen.style.display = 'none';
+                    console.warn('Scene load timeout - forcing display');
+                }
+            }, 10000);
+            
             scene.addEventListener('loaded', function() {
                 console.log('A-Frame scene loaded successfully');
+                clearTimeout(loadingTimeout);
                 setTimeout(() => {
                     if (loadingScreen) {
                         loadingScreen.style.display = 'none';
                     }
                     setupVRInteractions();
                     initializeMarkerAnimations();
-                }, 1000);
+                    
+                    // Force scene render
+                    if (scene.render) {
+                        scene.render();
+                    }
+                }, 500);
             });
             
             scene.addEventListener('error', function(e) {
                 console.error('Scene load error:', e);
+                clearTimeout(loadingTimeout);
                 if (loadingScreen) {
-                    loadingScreen.innerHTML = '<div style="text-align: center; color: #ff4444;">Error loading VR experience. Please check your image URL.</div>';
+                    loadingScreen.innerHTML = '<div style="text-align: center; color: #ff4444;">Error loading VR experience. Please check your image URL and try again.</div>';
                 }
             });
+
+            // Additional safety: check if scene is ready after 3 seconds
+            setTimeout(() => {
+                if (scene.hasLoaded) {
+                    loadingScreen.style.display = 'none';
+                }
+            }, 3000);
         });
 
         function setupVRInteractions() {
             const scene = currentScene;
-            if (!scene) return;
+            if (!scene) {
+                console.error('No A-Frame scene found');
+                return;
+            }
 
-            // Get camera and cursor
-            const camera = document.querySelector('#camera');
-            const cursor = camera ? camera.querySelector('[cursor]') : null;
+            // Wait for scene to be fully ready
+            setTimeout(() => {
+                // Get camera and cursor
+                const camera = document.querySelector('#camera');
+                const cursor = camera ? camera.querySelector('[cursor]') : null;
+                const raycaster = camera ? camera.components.raycaster : null;
 
-            // Enhanced click handling for all input methods
+                if (!raycaster) {
+                    console.warn('Raycaster not found, trying to initialize manually');
+                    // Initialize raycaster manually if needed
+                    if (camera) {
+                        camera.setAttribute('raycaster', 'objects: .interactive-marker; far: 20; near: 0.1');
+                    }
+                }
+
+                console.log('VR Interaction setup completed');
+            }, 1000);
+
+            // Enhanced click handling
             scene.addEventListener('click', function(evt) {
-                handleIntersection(evt.detail.intersectedEl, 'click');
+                console.log('Scene click detected', evt.detail);
+                if (evt.detail && evt.detail.intersectedEl) {
+                    handleIntersection(evt.detail.intersectedEl, 'click');
+                } else {
+                    // Fallback: try to find intersection manually
+                    const cursor = document.querySelector('[cursor]');
+                    if (cursor && cursor.components.raycaster) {
+                        const intersections = cursor.components.raycaster.intersections;
+                        if (intersections.length > 0) {
+                            handleIntersection(intersections[0].object.el, 'click-fallback');
+                        }
+                    }
+                }
             });
 
             // VR controller support
             scene.addEventListener('triggerdown', function(evt) {
-                handleIntersection(evt.detail.intersectedEl, 'vr-controller');
+                console.log('VR trigger pressed', evt.detail);
+                if (evt.detail && evt.detail.intersectedEl) {
+                    handleIntersection(evt.detail.intersectedEl, 'vr-controller');
+                }
             });
 
-            // Mobile touch support
+            // Enhanced mobile touch support
             if (isMobile) {
                 scene.addEventListener('touchstart', function(evt) {
-                    // For mobile, we need to handle touch differently
-                    setTimeout(() => {
-                        const cursor = document.querySelector('[cursor]');
-                        if (cursor && cursor.components.raycaster) {
-                            const intersections = cursor.components.raycaster.intersectedEls;
-                            if (intersections.length > 0) {
-                                handleIntersection(intersections[0], 'touch');
+                    if (evt.touches.length === 1) {
+                        setTimeout(() => {
+                            const cursor = document.querySelector('[cursor]');
+                            if (cursor && cursor.components.raycaster) {
+                                const intersections = cursor.components.raycaster.intersections;
+                                if (intersections.length > 0) {
+                                    const marker = intersections[0].object.el;
+                                    if (marker && marker.classList.contains('interactive-marker')) {
+                                        handleIntersection(marker, 'touch');
+                                    }
+                                }
                             }
-                        }
-                    }, 100);
-                });
+                        }, 50);
+                    }
+                }, { passive: true });
             }
 
             // Enhanced hover effects
@@ -1794,72 +1886,80 @@ generateVRHTML(projectData) {
                     el.classList.remove('marker-pulse');
                 }
             });
-
-            // Gaze-based interaction for accessibility
-            if (cursor) {
-                cursor.addEventListener('fusing', function(evt) {
-                    handleIntersection(evt.detail.intersectedEl, 'gaze');
-                });
-            }
-
-            console.log('VR interactions setup complete');
         }
 
         function handleIntersection(intersectedEl, interactionType) {
-            if (!intersectedEl) return;
+            if (!intersectedEl) {
+                console.log('No element intersected');
+                return;
+            }
             
-            if (intersectedEl.classList.contains('interactive-marker')) {
-                console.log('Marker clicked via:', interactionType);
-                handleMarkerClick(intersectedEl);
+            // Check if it's a marker or child of marker
+            let markerElement = intersectedEl;
+            if (!markerElement.classList.contains('interactive-marker')) {
+                markerElement = markerElement.closest('.interactive-marker');
+            }
+            
+            if (markerElement && markerElement.classList.contains('interactive-marker')) {
+                console.log('Marker interaction detected via:', interactionType, markerElement);
+                handleMarkerClick(markerElement);
                 
                 // Visual feedback
-                intersectedEl.setAttribute('animation', {
+                markerElement.setAttribute('animation', {
                     property: 'scale',
                     from: '1.3 1.3 1.3',
                     to: '1 1 1',
                     dur: 300
                 });
+            } else {
+                console.log('Intersected element is not a marker:', intersectedEl);
             }
         }
 
         function initializeMarkerAnimations() {
             const markers = document.querySelectorAll('.interactive-marker');
-            markers.forEach(marker => {
-                // Add subtle floating animation
-                marker.setAttribute('animation__float', {
-                    property: 'position',
-                    to: marker.getAttribute('position'),
-                    dur: 2000,
-                    easing: 'easeInOutSine',
-                    dir: 'alternate',
-                    loop: true
-                });
+            console.log('Initializing animations for', markers.length, 'markers');
+            
+            markers.forEach((marker, index) => {
+                // Add subtle floating animation with staggered start
+                setTimeout(() => {
+                    marker.setAttribute('animation__float', {
+                        property: 'position',
+                        to: marker.getAttribute('position'),
+                        dur: 2000 + (index * 100),
+                        easing: 'easeInOutSine',
+                        dir: 'alternate',
+                        loop: true
+                    });
+                }, index * 100);
             });
         }
 
         function handleMarkerClick(markerElement) {
-            if (!markerElement) return;
+            if (!markerElement) {
+                console.error('No marker element provided');
+                return;
+            }
             
             const markerData = markerElement.getAttribute('data-marker');
-            if (markerData) {
-                try {
-                    // Properly parse the marker data
-                    const parsedData = JSON.parse(markerData.replace(/&quot;/g, '"').replace(/&apos;/g, "'"));
-                    showMarkerInfo(parsedData);
-                } catch (e) {
-                    console.error('Error parsing marker data:', e);
-                    // Fallback: try direct parsing
-                    try {
-                        const parsedData = JSON.parse(markerData);
-                        showMarkerInfo(parsedData);
-                    } catch (e2) {
-                        console.error('Fallback parsing also failed:', e2);
-                        showMarkerInfo({
-                            title: 'Marker',
-                            description: 'Could not load marker information.'
-                        });
-                    }
-                }
+            if (!markerData) {
+                console.error('No marker data found');
+                return;
+            }
+            
+            try {
+                // Decode the URI component and parse JSON
+                const decodedData = decodeURIComponent(markerData);
+                const parsedData = JSON.parse(decodedData);
+                console.log('Marker data parsed successfully:', parsedData);
+                showMarkerInfo(parsedData);
+            } catch (e) {
+                console.error('Error parsing marker data:', e);
+                // Fallback: show basic info
+                showMarkerInfo({
+                    title: 'Marker',
+                    description: 'Could not load marker information. Data format error.'
+                });
             }
         }
 
@@ -1867,7 +1967,7 @@ generateVRHTML(projectData) {
             const panel = document.getElementById('infoPanel');
             const title = document.getElementById('panelTitle');
             const description = document.getElementById('panelDescription');
-            const linkElement = document.getElementById('panelLink');
+            const actionsElement = document.getElementById('panelActions');
             const mediaElement = document.getElementById('panelMedia');
             
             if (!panel || !title) {
@@ -1878,16 +1978,19 @@ generateVRHTML(projectData) {
             title.textContent = marker.title || 'Untitled Marker';
             description.textContent = marker.description || 'No description provided.';
             
-            // Handle link
+            // Handle actions (links)
+            actionsElement.innerHTML = '';
             if (marker.url && marker.url.trim() !== '') {
+                const linkElement = document.createElement('a');
                 linkElement.href = marker.url;
+                linkElement.target = '_blank';
+                linkElement.rel = 'noopener noreferrer';
                 linkElement.textContent = marker.url.includes('youtube') ? '🎬 Watch Video' : 
                                         marker.url.includes('vimeo') ? '🎬 Watch Video' :
-                                        marker.url.includes('soundcloud') ? '🎵 Listen' :
+                                        marker.url.includes('soundcloud') ? '🎵 Listen on SoundCloud' :
                                         '🔗 Visit Link';
-                linkElement.style.display = 'inline-block';
-            } else {
-                linkElement.style.display = 'none';
+                linkElement.style.cssText = 'display: inline-block; padding: 10px 20px; background: #10b981; color: white; text-decoration: none; border-radius: 6px; margin-right: 10px; margin-bottom: 10px; font-weight: bold;';
+                actionsElement.appendChild(linkElement);
             }
             
             // Handle media
@@ -1941,12 +2044,12 @@ generateVRHTML(projectData) {
             
             // Audio files
             if (url.match(/\\.(mp3|wav|ogg|m4a)(\\?.*)?$/i)) {
-                return '<audio controls style="width: 100%; margin-top: 10px; border-radius: 8px;"><source src="' + url + '">Your browser does not support audio.</audio>';
+                return '<div style="margin-top: 10px;"><audio controls style="width: 100%; border-radius: 8px;"><source src="' + url + '">Your browser does not support audio.</audio></div>';
             }
             
             // Video files
             if (url.match(/\\.(mp4|webm|ogg|mov)(\\?.*)?$/i)) {
-                return '<video controls style="width: 100%; max-width: 100%; margin-top: 10px; border-radius: 8px;"><source src="' + url + '">Your browser does not support video.</video>';
+                return '<div style="margin-top: 10px;"><video controls style="width: 100%; max-width: 100%; border-radius: 8px;"><source src="' + url + '">Your browser does not support video.</video></div>';
             }
             
             // SoundCloud
@@ -2003,17 +2106,6 @@ generateVRHTML(projectData) {
                 if (controlsInfo) {
                     controlsInfo.innerHTML = '<strong>Controls:</strong><br>• Touch and drag: Look around<br>• Virtual joystick: Move<br>• Tap markers: Interact';
                 }
-                
-                // Add touch event listener for mobile
-                document.addEventListener('touchstart', function(e) {
-                    if (e.touches.length === 1) {
-                        // Single touch for interaction
-                        const scene = currentScene;
-                        if (scene && scene.components.raycaster) {
-                            // Let A-Frame handle the touch interaction
-                        }
-                    }
-                }, { passive: true });
             });
         }
 
