@@ -2122,16 +2122,17 @@ generateVRHTML(projectData) {
 </html>`;
 }
 
-    sphericalToCartesian(phi, theta, radius = 5) {
-        const phiRad = (phi * Math.PI) / 180;
-        const thetaRad = (theta * Math.PI) / 180;
-        
-        const x = radius * Math.cos(thetaRad) * Math.sin(phiRad);
-        const y = radius * Math.sin(thetaRad);
-        const z = -radius * Math.cos(thetaRad) * Math.cos(phiRad);
-        
-        return `${x.toFixed(3)} ${y.toFixed(3)} ${z.toFixed(3)}`;
-    }
+sphericalToCartesian(phi, theta, radius = 5) {
+    // Convert to radians and adjust for A-Frame coordinate system
+    const phiRad = (phi * Math.PI) / 180;
+    const thetaRad = ((theta + 90) * Math.PI) / 180; // +90 to adjust for A-Frame
+    
+    const x = radius * Math.sin(thetaRad) * Math.cos(phiRad);
+    const y = radius * Math.cos(thetaRad);
+    const z = radius * Math.sin(thetaRad) * Math.sin(phiRad);
+    
+    return `${x.toFixed(3)} ${y.toFixed(3)} ${z.toFixed(3)}`;
+}
 
     getVRMarkerStyle(marker) {
         const baseColor = marker.color || this.getDefaultColor(marker.type);
